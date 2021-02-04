@@ -76,9 +76,9 @@ Salesforce Data Source for Spark supports reading(writing is not yet implemented
 * `streamingLoadAvailableData`: (Optional) loading all available data and stopping streaming or continue loading  data in incremental mode. Default (false).
 * `streamingQueryName`: (Optional) set query name to see query metrics in spark UI.
 
-##Architecture overview
+## Architecture overview
 query example: `"select id, name from account where name = 'alex'"`
-###Spark batch
+### Spark batch
 On Driver side:  
 1) getting the `offsetColumn` from configuration or taking default (Systemmodstamp).
 2) getting the `initial offset` from conf or salesforce table.
@@ -90,10 +90,10 @@ On Driver side:
 5) executing each query on Executor in parallel.
 Each executor keeps the last offset value from the previous soap batch to continue loading from this offset if an exception occurs.  
 This approach can produce duplicates but guarantee the data consistency.  
-####Limitations
+#### Limitations
 Spark job can fail if table is large(2 millions rows with huge number of columns, more then 100) and skewed(90% of records are in one partition).
 To load large table use load once streaming approach.
-###Spark streaming
+### Spark streaming
 Streaming is a micro batch processing. So the first steps are the same as in spark batch.  
 Each executor loads data until `streamingMaxRecordsInPartition` threshold. Then the micro batch job finishes, and the executor's metrics like:  
 - last batch offset value
@@ -118,14 +118,14 @@ Recreating partitions approach allow to load large and skewed tables with minimu
 if option `streamingLoadAvailableData` is true then spark streaming job is finished.
 Else new data is polling each `streamingAdditionalWaitWhenIncrementalLoading` and number of partitions will be calculated by: 
 `math.min(sfOptions.sfLoadNumPartitions, math.ceil(newRecords / sfOptions.streamingMaxRecordsInPartition))`  
-####Limitations
+#### Limitations
 Watermarks are not supported. They can be supported when loading data in one partition but this approach is not yet implemented
 
 
 ## Examples
 All options can be set via `--conf`. Just add `spark.sf` at the begging. For example, `--conf 'spark.sf.userName'`
 To query all columns asterisks can be used. For example, "select * from user"  
-###Batch:
+### Batch:
 ```scala
 spark
   .read
@@ -158,7 +158,7 @@ spark
   .schema(schema)
   .load("SELECT * FROM User") // select is pruned due to .schema(...) and salesforce query is "SELECT SystemModstamp,Id,Name FROM User" 
 ```
-###Streaming
+### Streaming
 load once
 ```scala
 val streamDF = spark
