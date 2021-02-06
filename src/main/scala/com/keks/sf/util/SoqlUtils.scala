@@ -99,7 +99,7 @@ object SoqlUtils extends LogSupport {
     }
   }
 
-  // TODO test it
+  /* Getting table from string soql */
   def getTableNameFromNotParsedSoql(soqlStr: String): String = {
     val replacedSoql = soqlStr.replaceFirst(BETWEEN_SELECT_FROM_REGEX, SELECT_ALL_STAR)
     val soql = SoqlUtils.validateAndParseQuery(replacedSoql)

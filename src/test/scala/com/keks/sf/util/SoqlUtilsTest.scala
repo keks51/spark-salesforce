@@ -11,32 +11,32 @@ import utils.TestBase
 
 class SoqlUtilsTest extends TestBase {
 
-  "SfUtils#isSelectAll" should "return false" in {
+  "SoqlUtils#isSelectAll" should "return false" in {
     val inputSoql = "select id, time From  User  where id = null"
     val res = isSelectAll(inputSoql)
     assert(!res)
   }
 
-  "SfUtils#isSelectAll" should "return true" in {
+  "SoqlUtils#isSelectAll" should "return true" in {
     val inputSoql = "select    *   From  User  where id = null"
     val res = isSelectAll(inputSoql)
     assert(res)
   }
 
-  "SfUtils#replaceSelectAllStar" should "replace *" in {
+  "SoqlUtils#replaceSelectAllStar" should "replace *" in {
     val inputSoql = "select    *   From  User  where id = null"
     val res = replaceSelectAllStar(inputSoql, isSelectAll = true)
     val exp = s"select $SELECT_ALL_STAR From  User  where id = null"
     assert(exp == res)
   }
 
-  "SfUtils#replaceSelectAllStar" should "don't modify soql" in {
+  "SoqlUtils#replaceSelectAllStar" should "don't modify soql" in {
     val inputSoql = "select id, name From User  where id = null"
     val res = replaceSelectAllStar(inputSoql, isSelectAll = false)
     assert(inputSoql == res)
   }
 
-  "SfUtils#fillSelectAll" should "add columns" in {
+  "SoqlUtils#fillSelectAll" should "add columns" in {
     val soqlStr = s"select $SELECT_ALL_STAR From  User  where id = null"
     val colNames = Array("id", "Name")
     val res = fillSelectAll(SOQLParserHelper.createSOQLData(soqlStr), colNames).toSOQLText
@@ -44,47 +44,47 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#validateQuery" should "validate without exceptions" in {
+  "SoqlUtils#validateQuery" should "validate without exceptions" in {
     val soql = "select id, name, Data From User where id = null"
     validateAndParseQuery(soql)
   }
 
-  "SfUtils#validateQuery" should "validate without exceptions with where string" in {
+  "SoqlUtils#validateQuery" should "validate without exceptions with where string" in {
     val soql = "select id, name, Data From User where id >= 'keks'"
     validateAndParseQuery(soql)
   }
 
-  "SfUtils#validateQuery" should "validate without exceptions with where integer" in {
+  "SoqlUtils#validateQuery" should "validate without exceptions with where integer" in {
     val soql = "select id, name, Data From User where id >= 20"
     validateAndParseQuery(soql)
   }
 
-  "SfUtils#validateQuery" should "validate without exceptions with where double" in {
+  "SoqlUtils#validateQuery" should "validate without exceptions with where double" in {
     val soql = "select id, name, Data From User where id >= 20.0"
     validateAndParseQuery(soql)
   }
 
-  "SfUtils#validateQuery" should "validate without exceptions with alias" in {
+  "SoqlUtils#validateQuery" should "validate without exceptions with alias" in {
     val soql = "select u.id, u.name, u.Data From User u"
     validateAndParseQuery(soql)
   }
 
-  "SfUtils#validateQuery" should "fail if query is incorrect" in {
+  "SoqlUtils#validateQuery" should "fail if query is incorrect" in {
     val soql = "select count From User where"
     assertThrows[SOQLParsingException](validateAndParseQuery(soql))
   }
 
-  "SfUtils#validateQuery" should "fail with group by validation" in {
+  "SoqlUtils#validateQuery" should "fail with group by validation" in {
     val soql = "select id, count(name) From User group by name"
     assertThrows[IllegalArgumentException](validateAndParseQuery(soql))
   }
 
-  "SfUtils#validateQuery" should "fail if query" in {
+  "SoqlUtils#validateQuery" should "fail if query" in {
     val soql = "select id, name From"
     assertThrows[SOQLParsingException](validateAndParseQuery(soql))
   }
 
-  "SfUtils#getSoqlSelectFieldNames" should "return fields" in {
+  "SoqlUtils#getSoqlSelectFieldNames" should "return fields" in {
     val soqlStr = "select id, name, Data From User where id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(soqlStr)
     val res = getSoqlSelectFieldNames(soql)
@@ -92,7 +92,7 @@ class SoqlUtilsTest extends TestBase {
     res should contain theSameElementsInOrderAs exp
   }
 
-  "SfUtils#getSoqlSelectFieldNames" should "return fields without alias" in {
+  "SoqlUtils#getSoqlSelectFieldNames" should "return fields without alias" in {
     val soqlStr = "select u.id, u.name, u.Data From User u where id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(soqlStr)
     val res = getSoqlSelectFieldNames(soql)
@@ -100,7 +100,7 @@ class SoqlUtilsTest extends TestBase {
     res should contain theSameElementsInOrderAs exp
   }
 
-  "SfUtils#getSoqlTableName" should "return fields" in {
+  "SoqlUtils#getSoqlTableName" should "return fields" in {
     val soqlStr = "select id, name, Data From User where id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(soqlStr)
     val res = getSoqlTableName(soql)
@@ -108,7 +108,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#getSoqlTableName" should "return fields without alias" in {
+  "SoqlUtils#getSoqlTableName" should "return fields without alias" in {
     val soqlStr = "select u.id, u.name, u.Data From User u where id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(soqlStr)
     val res = getSoqlTableName(soql)
@@ -116,7 +116,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#addWhereClause" should "add where clause to other" in {
+  "SoqlUtils#addWhereClause" should "add where clause to other" in {
     val soqlStr = "SELECT id, name, Data FROM User WHERE id = null AND name > 1 AND age < 0"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(soqlStr)
     val res = addWhereClause(soql, "age >= 10 AND age <= 20", setInParenthesis = true)
@@ -124,7 +124,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res.toSOQLText)
   }
 
-  "SfUtils#addWhereClause" should "add where clause" in {
+  "SoqlUtils#addWhereClause" should "add where clause" in {
     val soqlStr = "SELECT id, name, Data FROM User"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(soqlStr)
     val res = addWhereClause(soql, "age >= 10 AND age <= 20").toSOQLText
@@ -132,7 +132,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#addWhereClause" should "add where clause with Parenthesis" in {
+  "SoqlUtils#addWhereClause" should "add where clause with Parenthesis" in {
     val soqlStr = "SELECT id, name, Data FROM User"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(soqlStr)
     val res = addWhereClause(soql, "age >= 10 AND age <= 20", setInParenthesis = true).toSOQLText
@@ -140,7 +140,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#replaceLowerOffsetBound" should "replace '2019-01-01T00:00:00.000Z' with 'newValue' in single add" in {
+  "SoqlUtils#replaceLowerOffsetBound" should "replace '2019-01-01T00:00:00.000Z' with 'newValue' in single add" in {
     val soqlStr =
       s"""SELECT id FROM User
          |WHERE
@@ -153,7 +153,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#replaceLowerOffsetBound" should "replace '2019-01-01T00:00:00.000Z' with 'newValue'" in {
+  "SoqlUtils#replaceLowerOffsetBound" should "replace '2019-01-01T00:00:00.000Z' with 'newValue'" in {
     val soqlStr =
       s"""SELECT id FROM User
          |WHERE isDeleted = true AND
@@ -166,7 +166,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#replaceLowerOffsetBound" should "throw an exception" in {
+  "SoqlUtils#replaceLowerOffsetBound" should "throw an exception" in {
     val soqlStr =
       s"""SELECT id FROM User
          |WHERE isDeleted = true AND
@@ -177,7 +177,7 @@ class SoqlUtilsTest extends TestBase {
     assertThrows[IllegalArgumentException](replaceLowerOffsetBoundOrAddBound(soqlStr, newOffset, SoapDelivery.AT_LEAST_ONCE).toSOQLText)
   }
 
-  "SfUtils#getOrderByCols" should "return cols" in {
+  "SoqlUtils#getOrderByCols" should "return cols" in {
     val inputSoql = "SELECT id, time FROM  User  WHERE id = null ORDER BY id, SystemModstamp"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     val res: Array[String] = getOrderByCols(soql).get
@@ -185,13 +185,13 @@ class SoqlUtilsTest extends TestBase {
     res should contain theSameElementsInOrderAs exp
   }
 
-  "SfUtils#getOrderByCols" should "return None" in {
+  "SoqlUtils#getOrderByCols" should "return None" in {
     val inputSoql = "SELECT id, time FROM  User  WHERE id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     assert(getOrderByCols(soql).isEmpty)
   }
 
-  "SfUtils#addOrderByCol" should "add col" in {
+  "SoqlUtils#addOrderByCol" should "add col" in {
     val inputSoql = "SELECT id,time FROM User WHERE id = null ORDER BY id"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     val res = addOrderByCol(soql, "SystemModstamp").toSOQLText
@@ -199,7 +199,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#addOrderByCol" should "create order by" in {
+  "SoqlUtils#addOrderByCol" should "create order by" in {
     val inputSoql = "SELECT id,time FROM User WHERE id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     val res = addOrderByCol(soql, "SystemModstamp").toSOQLText
@@ -207,7 +207,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#printSOQL" should "print *" in {
+  "SoqlUtils#printSOQL" should "print *" in {
     val inputSoql = "SELECT id,time FROM User WHERE id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     val res = printSOQL(soql, isSelectAll = true)
@@ -215,7 +215,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#printSOQL" should "print without ..." in {
+  "SoqlUtils#printSOQL" should "print without ..." in {
     val inputSoql = "SELECT a1,a2,a3,a4,a5,a5,a7,a8,a9,a10 FROM User WHERE id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     val res = printSOQL(soql, isSelectAll = false)
@@ -223,7 +223,7 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#printSOQL" should "print with ..." in {
+  "SoqlUtils#printSOQL" should "print with ..." in {
     val inputSoql = "SELECT a1,a2,a3,a4,a5,a5,a7,a8,a9,a10,a11 FROM User WHERE id = null"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     val res = printSOQL(soql, isSelectAll = false)
@@ -231,11 +231,25 @@ class SoqlUtilsTest extends TestBase {
     assert(exp == res)
   }
 
-  "SfUtils#printSOQL" should "return count query without order by" in {
+  "SoqlUtils#printSOQL" should "return count query without order by" in {
     val inputSoql = "SELECT id,name,age FROM User WHERE id = null ORDER BY id"
     val soql: SOQLQuery = SOQLParserHelper.createSOQLData(inputSoql)
     val res = convertToCountQuery(soql).toSOQLText
     val exp = "SELECT count() FROM User WHERE id = null"
+    assert(exp == res)
+  }
+
+  "SoqlUtils#getTableNameFromNotParsedSoql" should "return table name when *" in {
+    val inputSoql = "SELECT * FROM User WHERE id = null ORDER BY id"
+    val res = SoqlUtils.getTableNameFromNotParsedSoql(inputSoql)
+    val exp = "User"
+    assert(exp == res)
+  }
+
+  "SoqlUtils#getTableNameFromNotParsedSoql" should "return table name" in {
+    val inputSoql = "SELECT id FROM User WHERE id = null ORDER BY id"
+    val res = SoqlUtils.getTableNameFromNotParsedSoql(inputSoql)
+    val exp = "User"
     assert(exp == res)
   }
 

@@ -45,7 +45,7 @@ abstract class SoapDataSourceReaderV2(sfOptions: SfOptions,
   }
 
   /* Spark result schema and SOQL without push down filters */
-  lazy val (resultSchema, resultSoql) = getRowSchemaAndSoql(requiredColumns, predefinedSchema)
+  lazy val (rowSchema, resultSoql) = getRowSchemaAndSoql(requiredColumns, predefinedSchema)
   /* Soql with push down filters */
   lazy val soqlToQuery: String = SfUtils.addFilters(resultSoql, notNullFiltersArr).toSOQLText
 

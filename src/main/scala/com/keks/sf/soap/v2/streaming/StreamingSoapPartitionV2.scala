@@ -13,14 +13,14 @@ import org.apache.spark.sql.types.StructType
   *
   * @param soqlFromDriver        soql query sent by driver
   * @param sfOptions             spark options wrapped in SfOptions
-  * @param schema                result schema
+  * @param rowSchema                result schema
   * @param sfSparkPartition      partition
   * @param checkpointLocationOpt streaming checkpoint dir location
   * @param hdfsConf              hadoop conf
   */
 class StreamingSoapPartitionV2(soqlFromDriver: String,
                                sfOptions: SfOptions,
-                               schema: StructType,
+                               rowSchema: StructType,
                                sfSparkPartition: SfSparkPartition,
                                checkpointLocationOpt: String,
                                hdfsConf: SerializableConfiguration)
@@ -40,7 +40,7 @@ class StreamingSoapPartitionV2(soqlFromDriver: String,
     StreamingSoapResultSet(
       sfOptions = sfOptions,
       soql = soqlStr,
-      requiredColsBySchemaOrdering = schema.fields.map(e => (e.name, e.dataType)),
+      requiredColsBySchemaOrdering = rowSchema.fields.map(e => (e.name, e.dataType)),
       queryExecutor = sfSoapConnection.queryExecutor,
       hdfsConf,
       checkpointLocationOpt,

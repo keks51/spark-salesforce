@@ -49,7 +49,7 @@ class SoapDataSourceBatchReaderV2(sfOptions: SfOptions,
     initialPartitions.map { split =>
       new BatchSoapPartitionV2(soqlToQuery,
                                sfOptions,
-                               resultSchema,
+                               rowSchema,
                                split)
     }.toList.asInstanceOf[List[InputPartition[InternalRow]]].asJava
   }

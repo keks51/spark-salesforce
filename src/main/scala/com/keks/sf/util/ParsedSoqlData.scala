@@ -71,7 +71,7 @@ object ParsedSoqlData {
     }
 
 
-    val soqlSchema: StructType = getSoqlSchema(sfTableName, sfTableDataTypeMap, soqlWithOrderBy)
+    val soqlSchema: StructType = createSoqlSchema(sfTableName, sfTableDataTypeMap, soqlWithOrderBy)
 
     /**
       * Getting TypeOperations implementation for offset col type.
@@ -100,7 +100,6 @@ object ParsedSoqlData {
                        orderByCols = orderByCols)
   }
 
-  // TODO test it
   /**
     * Getting spark struct schema based on select case from SOQL.
     * For example:
@@ -111,9 +110,9 @@ object ParsedSoqlData {
     * @param sfTableDataTypeMap salesforce table columns with spark sql data types
     * @param soql               soql
     */
-  def getSoqlSchema(sfTableName: String,
-                    sfTableDataTypeMap: Map[String, DataType],
-                    soql: SOQLQuery) = {
+  def createSoqlSchema(sfTableName: String,
+                       sfTableDataTypeMap: Map[String, DataType],
+                       soql: SOQLQuery) = {
     val lowerMap: Map[String, DataType] = sfTableDataTypeMap.map { case (key, value) => key.toLowerCase -> value }
     val fields: Array[StructField] = SoqlUtils
       .getSoqlSelectFieldNames(soql).map(e => (e.toLowerCase, e))

@@ -161,7 +161,7 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
       new StreamingSoapPartitionV2(
         soqlFromDriver = soqlToQuery,
         sfOptions = sfOptions,
-        schema = resultSchema,
+        rowSchema = rowSchema,
         sfSparkPartition = streamingPartition,
         checkpointLocationOpt = checkpointLocation,
         hdfsConf = serializableHadoopConf)
