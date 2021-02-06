@@ -5,6 +5,11 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources.v2.reader.InputPartitionReader
 
 
+/**
+  * Spark iterator for soap result set.
+  *
+  * @param rs SfResultSet implementation.
+  */
 class SoapIteratorV2(rs: SfResultSet) extends InputPartitionReader[InternalRow] {
 
   private var gotNext = false

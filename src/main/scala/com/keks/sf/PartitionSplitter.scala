@@ -12,8 +12,18 @@ import scala.math.Ordering
 import scala.util.Try
 
 
+/**
+  * Creating partitions depending on lowerBound and upperBound values.
+  */
 object PartitionSplitter extends LogSupport {
 
+  /**
+    * Pimp My Library pattern implementation.
+    *
+    * @param left offset type
+    * @param enc  type operations
+    * @tparam T offset type
+    */
   implicit class OperationSyntax[T](left: T)(implicit enc: PartitionTypeOperations[T]) {
 
     def + (right: T) = enc.add(left, right)
@@ -28,13 +38,32 @@ object PartitionSplitter extends LogSupport {
 
   }
 
+  /**
+    * Creating partition bounds.
+    * Input: (0, 30, 3)
+    * Output:
+    * {{{
+    *   Array(
+    *     (0, 10),
+    *     (10, 20),
+    *     (20, 30)
+    *   )
+    * }}}
+    *
+    * @param lowerBoundStr min offset value
+    * @param upperBoundStr max offset value
+    * @param numPartitions number of partitions
+    * @param enc           type operations
+    * @tparam T offset type
+    * @return Array of bounds
+    */
   def createBounds[T](lowerBoundStr: String,
                       upperBoundStr: String,
                       numPartitions: Int)(implicit enc: PartitionTypeOperations[T]): Array[(String, String)] = {
-    val lowerBound = enc.parse(lowerBoundStr)
-    val upperBound = enc.parse(upperBoundStr)
+    val lowerBound: T = enc.parse(lowerBoundStr)
+    val upperBound: T = enc.parse(upperBoundStr)
     enc.checkBounds(lowerBound, upperBound)
-    val partStep = (upperBound - lowerBound) / numPartitions
+    val partStep: T = (upperBound - lowerBound) / numPartitions
     (1 to numPartitions).toArray.map {
       case 1 => (lowerBound, lowerBound + partStep)
       case partNum if partNum == numPartitions => (lowerBound + (partStep * (partNum - 1)), upperBound)
@@ -42,6 +71,31 @@ object PartitionSplitter extends LogSupport {
     }.map { case (x, y) => (x.print, y.print) }.distinct
   }
 
+  /**
+    * Rebuilding bounds to increase number of partition.
+    * Before:
+    * {{{
+    *   Array(
+    *     (0, 10),
+    *     (40, 50)
+    *   )
+    * After:
+    * {{{
+    *   Array(
+    *     (0, 10),
+    *     (10, 20),
+    *     (20, 30),
+    *     (30, 40),
+    *     (40, 50)
+    *   )
+    * }}}
+    *
+    * @param bounds        input bounds to increase
+    * @param numPartitions increase to this value
+    * @param enc           type operations
+    * @tparam T offset type
+    * @return new Array bounds with size of 'numPartitions'
+    */
   def rebuildBounds[T](bounds: Array[(String, String)],
                        numPartitions: Int)
                       (implicit enc: PartitionTypeOperations[T]): Array[(String, String)] = {
@@ -51,29 +105,37 @@ object PartitionSplitter extends LogSupport {
       } else {
         val (lowerStr, upperStr) = recBounds.head
         if (recBounds.length == 1 && count != 1) {
-          val x = createBounds(lowerStr, upperStr, count + 1)
-          x
+          createBounds(lowerStr, upperStr, count + 1)
         } else {
-          val y =  createBounds(lowerStr, upperStr, 2)
-          y ++ rec(recBounds.tail, count - 1)
+          createBounds(lowerStr, upperStr, 2) ++ rec(recBounds.tail, count - 1)
         }
       }
     }
 
-    val needToAdd = numPartitions - bounds.length
+    val needToAdd: Int = numPartitions - bounds.length
     rec(bounds, needToAdd)
   }
 
   // TODO while processing partitions in streaming when no shuffling bounds, then last offset is moved as first but condition is still >= and duplicates occurs
+  /**
+    * Converting input bounds to SfSparkPartition.
+    *
+    * @param bounds                                      input bounds
+    * @param partitionColName                            partitioned by this column
+    * @param isFirstPartitionCondOperatorGreaterAndEqual use >= or > as upper bound condition in the first partition
+    * @param enc                                         type operations
+    * @tparam T offset type
+    * @return Array of SfSparkPartition
+    */
   def generateSfSparkPartitions[T](bounds: Array[(String, String)],
-                                   partitionCol: String,
+                                   partitionColName: String,
                                    isFirstPartitionCondOperatorGreaterAndEqual: Boolean)
                                   (implicit enc: PartitionTypeOperations[T]): Array[SfSparkPartition] = {
-    val getSfPartitionFunc =
+    val getSfPartitionFunc: (String, String, String, String, Int) => SfSparkPartition =
       (left: String, right: String, leftOperator: String, rightOperator: String, id: Int) =>
         SfSparkPartition(
           id = id,
-          column = partitionCol,
+          column = partitionColName,
           lowerBound = enc.parseToSfValue(left),
           upperBound = enc.parseToSfValue(right),
           leftCondOperator = leftOperator,
@@ -83,13 +145,13 @@ object PartitionSplitter extends LogSupport {
     val numPartitions = bounds.length
     bounds.zipWithIndex
       .map {
-        case ((left, right), i) if i == 0  && numPartitions == 1=>
+        case ((left, right), i) if i == 0 && numPartitions == 1 => // first partition
           val leftOperator: String = if (isFirstPartitionCondOperatorGreaterAndEqual) ">=" else ">"
           getSfPartitionFunc(left, right, leftOperator, "<=", i)
-        case ((left, right), i) if i == 0  && numPartitions != 1=>
+        case ((left, right), i) if i == 0 && numPartitions != 1 => // first partition
           val leftOperator: String = if (isFirstPartitionCondOperatorGreaterAndEqual) ">=" else ">"
           getSfPartitionFunc(left, right, leftOperator, "<", i)
-        case ((left, right), i) if i == numPartitions - 1 =>
+        case ((left, right), i) if i == numPartitions - 1 => // last partition
           getSfPartitionFunc(left, right, ">=", "<=", i)
         case ((left, right), i) =>
           getSfPartitionFunc(left, right, ">=", "<", i)
@@ -97,6 +159,19 @@ object PartitionSplitter extends LogSupport {
   }
 
   // TODO test it
+  /**
+    * Recreating previous SfSparkPartition.
+    * If all partitions are not finished then only lower bounds are replaced with the latest offset.
+    * If all partitions are finished then return an empty array.
+    * if number of not finished partitions is < numPartitions then partitions are recreated to increase number of partitions.
+    *
+    * @param partitions    input partitions
+    * @param numPartitions desired number of partitions
+    * @param offsetColName partitioned by this column
+    * @param enc           type operations
+    * @tparam T offset type
+    * @return Array of SfSparkPartition
+    */
   def recreateSfSparkPartitions[T](partitions: Array[SfSparkPartition],
                                    numPartitions: Int,
                                    offsetColName: String)
@@ -121,6 +196,11 @@ object PartitionSplitter extends LogSupport {
     }
   }
 
+  /**
+    * Returning operation type depending on spark sql DataType.
+    *
+    * @param partitionColType spark sql DataType
+    */
   def getOperationType(partitionColType: DataType) = {
     partitionColType match {
       case TimestampType => PartitionTypeOperationsIml.timeOperations

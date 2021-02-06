@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.matching.UrlPattern
 import com.keks.sf.SfOptions._
-import com.keks.sf.soap.SALESFORCE_SOAP_V2
+import com.keks.sf.SALESFORCE_SOAP_V2
 import com.keks.sf.soap.v2.streaming.SfPartitionsReadWrite.{SF_DRIVER_PARTITIONS, SF_EXECUTORS_PARTITIONS_DIR, SF_EXECUTOR_PARTITION_FILE_NAME}
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.streaming.OutputMode

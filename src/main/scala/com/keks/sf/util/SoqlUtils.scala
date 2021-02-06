@@ -22,17 +22,21 @@ object SoqlUtils extends LogSupport {
 
   val BETWEEN_SELECT_FROM_REGEX = "(?<=(?i)select\\s).*(?=\\s(?i)from)"
 
-  def getTableNameFromSoql(soqlStr: String): String = {
-    new Regex("(?<=(?i)from)(?:\\s*)\\b\\w+\\b")
-      .findFirstIn(soqlStr)
-      .map(_.trim)
-      .getOrElse(throw new RuntimeException(s"Cannot detect table name after 'from' in soql: '$soqlStr'"))
-  }
-
+  /**
+    * Input: 'select * From  User'
+    * Output: true
+    * Input: 'select id From  User'
+    * Output: false
+    */
   def isSelectAll(soqlStr: String): Boolean = {
     new Regex(BETWEEN_SELECT_FROM_REGEX).findFirstIn(soqlStr).exists(_.trim == "*")
   }
 
+  /**
+    * Replacing * with specific string variable because
+    * org.mule.tools.soql library cannot parse *
+    *
+    */
   def replaceSelectAllStar(soqlStr: String, isSelectAll: Boolean): String = {
     if (isSelectAll) {
       soqlStr.replaceFirst(BETWEEN_SELECT_FROM_REGEX, SELECT_ALL_STAR)
@@ -41,6 +45,11 @@ object SoqlUtils extends LogSupport {
     }
   }
 
+  /**
+    * Overriding select statement with array of columns
+    * @param soql previous soql query
+    * @param columns replace previous select with this columns
+    */
   def fillSelectAll(soql: SOQLQuery, columns: Array[String]): SOQLQuery = {
     val selectClause = new SelectClause()
     columns.foreach(colName => selectClause.addSelectSpec(new FieldSpec(new Field(colName), null)))
@@ -48,7 +57,16 @@ object SoqlUtils extends LogSupport {
     soql
   }
 
-  def validateAndParseQuery(soqlStr: String) = {
+  /**
+    * Validating soql query defined bu User and parsing to SOQLQuery.
+    * Check syntax.
+    * Group by is prohibited.
+    * Having is prohibited.
+    *
+    * @param soqlStr soql as string to validate and parse
+    * @return org.mule.tools.soql.SOQLQuery
+    */
+  def validateAndParseQuery(soqlStr: String): SOQLQuery = {
     val soql: SOQLQuery = Try(SOQLParserHelper.createSOQLData(soqlStr))
       .onFailure { e => println(s"Cannot parse query: '$soqlStr'"); throw e }
     val message: String => String = (option: String) => s"Spark-Salesforce library doesn't support '$option' in soql query"
@@ -57,6 +75,13 @@ object SoqlUtils extends LogSupport {
     soql
   }
 
+  /**
+    * Getting fields in select clause.
+    * For example, if input 'SELECT id,name FROM User'
+    * then result is Array(id, name)
+    * @param soql input soql
+    * @return Array of columns
+    */
   def getSoqlSelectFieldNames(soql: SOQLQuery): Array[String] = {
     soql
       .getSelectClause
@@ -66,6 +91,7 @@ object SoqlUtils extends LogSupport {
       .toArray
   }
 
+  /* Getting field name from */
   def getFieldName(selectSpec: SelectSpec): String = {
     selectSpec match {
       case field: FieldSpec => field.getField.getFieldName
@@ -73,14 +99,39 @@ object SoqlUtils extends LogSupport {
     }
   }
 
+  // TODO test it
+  def getTableNameFromNotParsedSoql(soqlStr: String): String = {
+    val replacedSoql = soqlStr.replaceFirst(BETWEEN_SELECT_FROM_REGEX, SELECT_ALL_STAR)
+    val soql = SoqlUtils.validateAndParseQuery(replacedSoql)
+    getSoqlTableName(soql)
+  }
+
+  /**
+    * Input: 'select id From  User'
+    * Output: User
+    */
   def getSoqlTableName(soql: SOQLQuery): String = {
     soql.getFromClause.getMainObjectSpec.getObjectName
   }
 
-  def addWhereClause(soql: SOQLQuery, s: String, setInParenthesis: Boolean = false): SOQLQuery = {
+  /**
+    * Adding where clause to SOQL.
+    * For example,
+    * Input: 'SELECT Id FROM User'
+    * Add: 'WHERE IsDeleted = true'
+    * Result: 'SELECT Id FROM User WHERE IsDeleted = true'
+    * if setInParenthesis = true then 'SELECT Id FROM User WHERE (IsDeleted = true)'
+    *
+    * @param soql input SOQL
+    * @param stringWhereClause clause to add
+    * @param setInParenthesis set in () or not
+    */
+  def addWhereClause(soql: SOQLQuery,
+                     stringWhereClause: String,
+                     setInParenthesis: Boolean = false): SOQLQuery = {
     val anotherCondition: Condition =
-      Try(SOQLParserHelper.createSOQLData(s"SELECT id FROM user WHERE $s").getWhereClause.getCondition)
-        .onFailure { e => println(s"Cannot parse where clause: $s"); throw e }
+      Try(SOQLParserHelper.createSOQLData(s"SELECT id FROM user WHERE $stringWhereClause").getWhereClause.getCondition)
+        .onFailure { e => println(s"Cannot parse where clause: $stringWhereClause"); throw e }
     Option(soql.getWhereClause)
       .map { clause =>
         val previousCond = if (setInParenthesis) new Parenthesis(clause.getCondition) else clause.getCondition
@@ -97,6 +148,21 @@ object SoqlUtils extends LogSupport {
     soql
   }
 
+  /**
+    * Changing lowerBound offset to new value
+    * If SoapDelivery is AT_LEAST_ONCE then lowerBound condition is '>='
+    * If SoapDelivery is AT_MOST_ONCE then lowerBound condition is '>'
+    * For example.
+    * InputSoql: SELECT Id FROM User WHERE (Id >= 10 AND Id <= 20) ORDER BY Id
+    * newOffsetValue: 15
+    * Delivery: AT_MOST_ONCE
+    * Result: SELECT Id FROM User WHERE (Id > 15 AND Id <= 20) ORDER BY Id
+    *
+    * @param soqlStr soql as string
+    * @param value new offset value
+    * @param delivery delivery semantic
+    * @return
+    */
   def replaceLowerOffsetBoundOrAddBound(soqlStr: String, value: String, delivery: SoapDelivery): SOQLQuery = {
     val comparisonOperator =
       if (delivery == SoapDelivery.AT_LEAST_ONCE) ComparisonOperator.GREATER_EQUALS else ComparisonOperator.GREATER
@@ -150,6 +216,7 @@ object SoqlUtils extends LogSupport {
     soql
   }
 
+  /* Input: 'SELECT Id FROM User ORDER BY Id'. Result: Some(Id) */
   def getOrderByCols(soql: SOQLQuery): Option[Array[String]] = {
     Option(soql.getOrderByClause)
       .map(_.getOrderBySpecs.asScala.map { orderBySpec =>
@@ -158,6 +225,11 @@ object SoqlUtils extends LogSupport {
       }.toArray)
   }
 
+  /**
+    * Input: 'SELECT Id FROM User'
+    * colName: Id
+    * Result: 'SELECT Id FROM User ORDER BY Id'
+    */
   def addOrderByCol(soql: SOQLQuery, colName: String): SOQLQuery = {
     val newOrderBySpec = new OrderBySpec(new Field(colName), null, null)
     Option(soql.getOrderByClause)
@@ -172,10 +244,12 @@ object SoqlUtils extends LogSupport {
     soql
   }
 
+  /* pretty print as String. If isSelectAll = true then instead of select cols '*' is used */
   def printSOQL(soqlSqr: String, isSelectAll: Boolean): String = {
     printSOQL(SOQLParserHelper.createSOQLData(soqlSqr), isSelectAll)
   }
 
+  /* pretty print as String. If isSelectAll = true then instead of select cols '*' is used */
   def printSOQL(soql: SOQLQuery, isSelectAll: Boolean): String = {
     if (isSelectAll) {
       soql.toSOQLText.replaceFirst(BETWEEN_SELECT_FROM_REGEX, "*")
@@ -195,22 +269,23 @@ object SoqlUtils extends LogSupport {
     }
   }
 
+  /**
+    * Input: 'SELECT Id FROM User ORDER BY Id'
+    * Output: 'SELECT count() FROM User'
+    */
   def convertToCountQuery(soqlSqr: String): SOQLQuery = {
     convertToCountQuery(SOQLParserHelper.createSOQLData(soqlSqr))
   }
+
+  /**
+    * Input: 'SELECT Id FROM User ORDER BY Id'
+    * Output: 'SELECT count() FROM User'
+    */
   def convertToCountQuery(soql: SOQLQuery): SOQLQuery = {
     val soqlCopy = soql.copySOQL
     soqlCopy.setOrderByClause(null)
     val countSoqlStr = soqlCopy.toSOQLText.replaceFirst(BETWEEN_SELECT_FROM_REGEX, "count()")
     SOQLParserHelper.createSOQLData(countSoqlStr)
-  }
-
-  def changePartitionWhereClause(clauseStr: String, newValue: String): String = {
-    val soql = SOQLParserHelper.createSOQLData(s"select id from user $clauseStr")
-    val cond = soql.getWhereClause.getCondition.asInstanceOf[AndOperator]
-    val k = cond.getLeftCondition.asInstanceOf[FieldBasedCondition]
-    k.setLiteral(new Literal(newValue))
-    soql.getWhereClause.toSOQLText
   }
 
 }

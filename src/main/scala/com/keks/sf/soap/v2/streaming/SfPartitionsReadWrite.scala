@@ -16,6 +16,17 @@ import java.util.ConcurrentModificationException
 
 
 // TODO check hdfs conf with emr
+/**
+  * SfPartitions manager.
+  * This class helps to read and keep information about data processed on executors.
+  * Driver can read information about all executors.
+  * Executor can save in information, that will be read by driver.
+  * Mostly this class reuses functionality
+  * from org.apache.spark.sql.execution.streaming.CheckpointFileManager.
+  *
+  * @param checkpointLocation streaming checkpoint dir location
+  * @param conf hadoop conf
+  */
 case class SfPartitionsReadWrite(checkpointLocation: String,
                                  conf: Configuration) extends LogSupport {
 
@@ -23,7 +34,9 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
 
   private val fileManager = CheckpointFileManager.create(new Path(checkpointLocation), conf)
 
-
+  /**
+    * Reading metadata about all executors when microBatch finishes.
+    */
   def readDriverSfPartitions: Option[SfStreamingPartitions] = {
     val sfPartitionsPath = new Path(s"$checkpointLocation/$SF_DRIVER_PARTITIONS")
     if (fileManager.exists(sfPartitionsPath)) {
@@ -44,16 +57,18 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
     } else {
       warn(s"Unable to find $SF_DRIVER_PARTITIONS file in path $sfPartitionsPath")
       None
-
     }
   }
 
+  /**
+    * Storing partitions before sending them to executors for fault tolerance.
+    *
+    * @param sfPartitions partitions
+    */
   def writeDriverSfPartitions(sfPartitions: SfStreamingPartitions): Unit = {
     val offsetPath = new Path(s"$checkpointLocation")
     val sfPartitionsPath = new Path(s"$checkpointLocation/$SF_DRIVER_PARTITIONS")
-    if (!fileManager.exists(offsetPath)) {
-      fileManager.mkdirs(offsetPath)
-    }
+    if (!fileManager.exists(offsetPath)) fileManager.mkdirs(offsetPath)
     val out: CheckpointFileManager.CancellableFSDataOutputStream =
       fileManager.createAtomic(sfPartitionsPath, overwriteIfPossible = true)
     try {
@@ -73,7 +88,13 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
     }
   }
 
-  def writeExecutorSfPartition(partitionId: Int, data: SfSparkPartition): Unit = {
+  /**
+    * Executor saves information about processed data for driver.
+    *
+    * @param partitionId unique partition id.
+    * @param partition partition
+    */
+  def writeExecutorSfPartition(partitionId: Int, partition: SfSparkPartition): Unit = {
     val offsetPath = new Path(s"$checkpointLocation/$SF_EXECUTORS_PARTITIONS_DIR/$partitionId/")
     val offsetFilePath = new Path(s"$offsetPath/$SF_EXECUTOR_PARTITION_FILE_NAME")
     if (!fileManager.exists(offsetPath)) {
@@ -82,7 +103,7 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
     val out: CheckpointFileManager.CancellableFSDataOutputStream =
       fileManager.createAtomic(offsetFilePath, overwriteIfPossible = true)
     try {
-      Serialization.write(data, out)
+      Serialization.write(partition, out)
       out.close()
     } catch {
       case e: FileAlreadyExistsException =>
@@ -97,6 +118,9 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
     }
   }
 
+  /**
+    * Driver read information from all executors to recreate partitions.
+    */
   def readExecutorPartitions: Option[Array[SfSparkPartition]] = {
     val offsetPath = new Path(s"$checkpointLocation/$SF_EXECUTORS_PARTITIONS_DIR/")
     val res: Array[SfSparkPartition] = if (fileManager.exists(offsetPath)) {
@@ -127,6 +151,9 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
     if (res.nonEmpty) Some(res) else None
   }
 
+  /**
+    * Deleting executors partitions.
+    */
   def deleteExecutorsPartitionsDir(): Unit = {
     val offsetPath = new Path(s"$checkpointLocation/$SF_EXECUTORS_PARTITIONS_DIR")
     fileManager.delete(offsetPath)

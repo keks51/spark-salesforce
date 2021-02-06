@@ -11,25 +11,6 @@ import utils.TestBase
 
 class SoqlUtilsTest extends TestBase {
 
-  "SfUtils#getTableNameFromSoql" should "return table name when where case" in {
-    val inputSoql = "select id, time From  User  where id = null"
-    val res = getTableNameFromSoql(inputSoql)
-    val exp = "User"
-    assert(exp == res)
-  }
-
-  "SfUtils#getTableNameFromSoql" should "return table name" in {
-    val inputSoql = "select id, time From User"
-    val res = getTableNameFromSoql(inputSoql)
-    val exp = "User"
-    assert(exp == res)
-  }
-
-  "SfUtils#getTableNameFromSoql" should "throw exception" in {
-    val inputSoql = "select id, time FromUser"
-    assertThrows[RuntimeException](getTableNameFromSoql(inputSoql))
-  }
-
   "SfUtils#isSelectAll" should "return false" in {
     val inputSoql = "select id, time From  User  where id = null"
     val res = isSelectAll(inputSoql)
@@ -256,13 +237,6 @@ class SoqlUtilsTest extends TestBase {
     val res = convertToCountQuery(soql).toSOQLText
     val exp = "SELECT count() FROM User WHERE id = null"
     assert(exp == res)
-  }
-
-  "SfUtils#printSOQL" should "change where cond" in {
-    val oldWhere = "WHERE SystemModstamp >= 'a' AND SystemModstamp < 'b'"
-    val res = changePartitionWhereClause(oldWhere, "'c'")
-    val exp = "WHERE SystemModstamp >= 'c' AND SystemModstamp < 'b'"
-    assert(res == exp)
   }
 
 }

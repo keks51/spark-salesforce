@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.matching.UrlPattern
 import com.keks.sf.SfOptions._
-import com.keks.sf.soap.SALESFORCE_SOAP_V2
+import com.keks.sf.SALESFORCE_SOAP_V2
 import org.apache.spark.sql.streaming.OutputMode
 import utils.SalesforceColumns.{ID, SYSTEMMODSTAMP}
 import utils.{DataFrameEquality, MockedServer, TestBase, TmpDirectory}

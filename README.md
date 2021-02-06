@@ -14,9 +14,10 @@ Salesforce Data Source for Spark supports reading(writing is not yet implemented
 * **Stream processing** - only structured streaming
 * **Batch processing** - reading salesforce data in batches
 * **Soap connection** - loading data via soap
-* **Supporting Datasource Api v1 and v2** - supporting old and new datasource api
+* **Supporting Spark Datasource Api v1 and v2** - supporting old and new datasource api
 * **Custom spark UI for query metrics** - additional streaming metrics in spark ui
-
+## Limitations
+- Aggregations in SOQL query are not supported. Use Spark aggregations
 ## Supported types for Salesforce -> Spark SQL conversion
 |           SF type          | Spark SQL type |
 |----------------------------|----------------|
@@ -47,19 +48,19 @@ Salesforce Data Source for Spark supports reading(writing is not yet implemented
 ## Options
 ### Connection settings
 * `userName`: Salesforce Username.
-* `userPassword`: Salesforce user Password. Please append security token along with password.For example,
+* `userPassword`: Salesforce user Password. Please append security token along with a password. For example,
   if a user’s password is mypassword, and the security token is XXXXXXXXXX, the user must provide mypasswordXXXXXXXXXX.
 * `authEndPoint`: (Optional) Salesforce Login URL. Default value login.salesforce.com
 * `apiVersion`:   used in for example "https://login.salesforce.com/services/Soap/u/<apiVersion>". apiVersion like 39.0.
 * `proxyHost`:  (Optional) proxy configuration.
-* `proxyPort`:  (Optional) proxy configuration (INTEGER).
+* `proxyPort`:  (Optional) proxy configuration.
 * `proxyUserName`: (Optional) proxy configuration.
 * `proxyPassword`: (Optional) proxy configuration.
 * `useHttps`: (Optional) use https or http in salesforce url. Default (true).
 * `connectionTimeout`: (Optional) salesforce login connection timeout in milliseconds (Long). Default (30000).
 * `checkConnectionRetries`: (Optional) number of get connection retries before aborting the loading (INTEGER). Default (10).
-* `retrySleepMin`: (Optional) min number of milliseconds to sleep before trying to load if an exception occurs. Default (5000).
-* `retrySleepMax`: (Optional) max number of milliseconds to sleep before trying to load if an exception occurs. Default (20000).
+* `retrySleepMin`: (Optional) min number of milliseconds to sleep before trying to load again if an exception occurs. Default (5000).
+* `retrySleepMax`: (Optional) max number of milliseconds to sleep before trying to load again if an exception occurs. Default (20000).
 ### Query settings
 * `isQueryAll`:  (Optional) Include deleted records or not. Default value (true).
 * `offsetColumn`: (Optional) is used to load partitioned data and to check updates while streaming. 
@@ -116,11 +117,12 @@ Driver loads these metrics from the checkpoint dir.
 This algorithm is repeated until all data between `initial offset` and `end offset` is loaded. 
 Recreating partitions approach allow to load large and skewed tables with minimum of cluster resources.  
 if option `streamingLoadAvailableData` is true then spark streaming job is finished.
-Else new data is polling each `streamingAdditionalWaitWhenIncrementalLoading` and number of partitions will be calculated by: 
+Else new data is polling each `streamingAdditionalWaitWhenIncrementalLoading` and the number of partitions is calculated by: 
 `math.min(sfOptions.sfLoadNumPartitions, math.ceil(newRecords / sfOptions.streamingMaxRecordsInPartition))`  
 #### Limitations
 Watermarks are not supported. They can be supported when loading data in one partition but this approach is not yet implemented
-
+DStreams are not supported.
+ContinuousReadSupport is not supported.
 
 ## Examples
 All options can be set via `--conf`. Just add `spark.sf` at the begging. For example, `--conf 'spark.sf.userName'`

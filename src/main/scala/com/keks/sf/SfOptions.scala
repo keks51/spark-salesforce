@@ -13,6 +13,14 @@ import scala.collection.mutable
 import scala.util.Try
 
 
+/**
+  * Spark query options.
+  * .exists(...) means false by default
+  * .forall(...) means true by default
+  *
+  * @param parameters parameters
+  * @param sparkConf spark configuration
+  */
 class SfOptions(@transient private val parameters: CaseInsensitiveMap[String],
                 sparkConf: SparkConf) extends LogSupport with Serializable {
 
@@ -38,7 +46,7 @@ class SfOptions(@transient private val parameters: CaseInsensitiveMap[String],
   require(paths.map(_ == "[]").getOrElse(paths.isEmpty), "Only one SOQL query should be defined in '.load(...)'")
   val soql: String = parameters
     .get(DataSourceOptions.PATH_KEY)
-    .map(e => if (e.trim.contains(" ")) e else s"SELECT * FROM $e") // check if .load("User")
+    .map(e => if (e.trim.contains(" ")) e else s"SELECT * FROM $e") // TODO check if .load("User")
     .getOrElse(throw new SoqlIsNotDefinedException)
 
   val isQueryAll = getFromOptionsOrSparkConfOpt(SF_IS_QUERY_ALL).forall { e => isBool(SF_IS_QUERY_ALL, e); e.toBoolean }
@@ -50,7 +58,6 @@ class SfOptions(@transient private val parameters: CaseInsensitiveMap[String],
 
   val compression: Boolean = getFromOptionsOrSparkConfOpt(SF_COMPRESSION).exists { e => isBool(SF_COMPRESSION, e); e.toBoolean }
 
-  // exists means False by default
   val showTrace: Boolean = getFromOptionsOrSparkConfOpt(SF_SHOW_TRACE).exists { e => isBool(SF_SHOW_TRACE, e); e.toBoolean }
 
   val proxyHostOpt: Option[String] =

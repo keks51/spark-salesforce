@@ -12,12 +12,14 @@ import java.sql.{Date, Timestamp}
 
 object SfUtils extends LogSupport with Serializable {
 
+  /* Parsing Salesforce record field. */
   def parseSfFieldToDataType(field: Field): (String, DataType) = {
     val name = field.getName
     val fieldType = SfUtils.parseXmlObjTypeToDataType(field.getType.name())
     name -> fieldType
   }
 
+  /* Matching xmlObjType to Spark Sql Datatype */
   def parseXmlObjTypeToDataType(xmlObjType: String): DataType = {
     FieldType.valueOf(xmlObjType) match {
       case FieldType.string => StringType
@@ -49,14 +51,16 @@ object SfUtils extends LogSupport with Serializable {
     }
   }
 
+  /* Adding spark filters to soql query */
   def addFilters(soql: SOQLQuery, filters: Array[Filter]): SOQLQuery = {
-    filters.flatMap(compileFilter).foldLeft(soql) { case (soql, filterStr) =>
+    filters.flatMap(parseFilter).foldLeft(soql) { case (soql, filterStr) =>
       println(filterStr)
       SoqlUtils.addWhereClause(soql, s"($filterStr)")
     }
   }
 
-  def compileFilter(filter: Filter): Option[String] = {
+  /* Parsing spark filter as soql condition */
+  def parseFilter(filter: Filter): Option[String] = {
     val res = filter match {
       case EqualTo(colName, value) => s"$colName = ${compileFilterValue(value)}"
       case EqualNullSafe(colName, value) => s"$colName = ${compileFilterValue(value)}" // for salesforce we do not need to check if null
@@ -71,19 +75,19 @@ object SfUtils extends LogSupport with Serializable {
       case StringContains(attr, value) => s"$attr LIKE '%$value%'"
       case In(_, value) if value.isEmpty => null
       case In(attr, value) => s"$attr IN (${compileFilterValue(value)})"
-      case Not(f) => compileFilter(f).map(p => s"(NOT ($p))").orNull
+      case Not(f) => parseFilter(f).map(p => s"(NOT ($p))").orNull
       case Or(f1, f2) =>
         // We can't compile Or filter unless both sub-filters are compiled successfully.
         // It applies too for the following And filter.
         // If we can make sure compileFilter supports all filters, we can remove this check.
-        val or = Seq(f1, f2).flatMap(compileFilter)
+        val or = Seq(f1, f2).flatMap(parseFilter)
         if (or.size == 2) {
           or.map(p => s"($p)").mkString(" OR ")
         } else {
           null
         }
       case And(f1, f2) =>
-        val and = Seq(f1, f2).flatMap(compileFilter)
+        val and = Seq(f1, f2).flatMap(parseFilter)
         if (and.size == 2) {
           and.map(p => s"($p)").mkString(" AND ")
         } else {
@@ -96,14 +100,30 @@ object SfUtils extends LogSupport with Serializable {
     Option(res)
   }
 
+  /* Compiling spark filter value as soql value */
   def compileFilterValue(value: Any): Any = value match {
     case stringValue: String => s"'$stringValue'"
     case timestampValue: Timestamp => DateTimeUtils.parseSqlTimestampAsStringToDate(timestampValue.toString)
     case dateValue: Date => s"$dateValue"
-    case arrayValue: Array[Any] => arrayValue.map(compileFilterValue).mkString(", ")
+    case arrayValue: Array[Any] => arrayValue.map(compileFilterValue).mkString(",")
     case _ => value
   }
 
+  /**
+    * Creating initial spark partitions.
+    * If lastProcessedOffset and endOffset are both empty
+    * then no data exists in salesforce table.
+    * If PartitionType is a String Type then only one partition can be created,
+    * because string type doesn't support partitioning.
+    *
+    * @param offsetColName offset col name like SystemModstamp
+    * @param sfTableName salesforce table
+    * @param lastProcessedOffset latest processed offset from salesforce table
+    * @param endOffset max available offset in salesforce table
+    * @param numPartitions number of partitions to create
+    * @param isFirstPartitionCondOperatorGreaterAndEqual should upperBound condition be >= or >
+    * @return array of SfSparkPartition
+    */
   def getSparkPartitions[T](offsetColName: String,
                             sfTableName: String,
                             lastProcessedOffset: Option[String],

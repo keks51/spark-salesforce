@@ -4,6 +4,11 @@ import com.keks.sf.SfResultSet
 import org.apache.spark.sql.catalyst.InternalRow
 
 
+/**
+  * Spark iterator for soap result set.
+  *
+  * @param rs SfResultSet implementation.
+  */
 case class SoapIteratorV1(rs: SfResultSet) extends Iterator[InternalRow] {
 
   private var gotNext = false

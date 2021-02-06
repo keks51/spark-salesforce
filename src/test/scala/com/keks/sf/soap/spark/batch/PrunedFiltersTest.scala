@@ -3,7 +3,7 @@ package com.keks.sf.soap.spark.batch
 import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, containing, post, urlEqualTo}
 import com.github.tomakehurst.wiremock.matching.UrlPattern
 import com.keks.sf.SfOptions._
-import com.keks.sf.soap.{SALESFORCE_SOAP_V1, SALESFORCE_SOAP_V2}
+import com.keks.sf.{SALESFORCE_SOAP_V1, SALESFORCE_SOAP_V2}
 import org.apache.spark.sql.functions.col
 import utils.SalesforceColumns.{ID, NAME, SYSTEMMODSTAMP, TIME_FIELD}
 import utils.{DataFrameEquality, MockedServer, TestBase}

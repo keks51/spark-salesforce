@@ -3,6 +3,11 @@ package com.keks.sf.soap.v2.streaming
 import org.apache.spark.sql.sources.v2.reader.streaming.Offset
 
 
+/**
+  * Wrapper of internal spark streaming offset.
+  *
+  * @param offset value
+  */
 case class SfOffset(offset: String) extends Offset {
 
   override def json: String = offset

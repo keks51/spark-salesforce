@@ -3,6 +3,9 @@ package com.keks.sf
 import org.apache.spark.sql.catalyst.InternalRow
 
 
+/**
+  * Like Jdbc result set
+  */
 trait SfResultSet extends LogSupport {
 
   def hasNext: Boolean

@@ -14,6 +14,27 @@ import java.sql.Date
 import scala.util.Try
 
 
+/**
+  * Parsing Salesforce record to Spark GenericInternalRow.
+  * Getting position of each field from the first record
+  * and matching with result spark schema col.
+  * For example:
+  * Sf Head record cols are (id, name, age)
+  * Result schema cols are (name, age, id)
+  * Then to match head record with spark schema, cols positions are kept
+  * ((name, 1), (age, 2), (id, 0)).
+  *
+  * While parsing sf record, fields values are getting by position.
+  * When col is an offsetCol then this value is stored in SfSparkPartition.
+  *
+  *
+  * @param headRowColNames salesforce record cols
+  * @param requiredColsBySchemaOrdering cols that should be get
+  * @param sfStreamingPartition partition to store offset value
+  * @param offsetColName offset col name
+  * @param offsetValueIsString if true then value is wrapped by '.
+  *                            For example alex will be 'alex'.
+  */
 case class SalesforceRecordParser(headRowColNames: Array[String],
                                   requiredColsBySchemaOrdering: Array[(String, DataType)],
                                   sfStreamingPartition: SfSparkPartition,
@@ -46,7 +67,8 @@ case class SalesforceRecordParser(headRowColNames: Array[String],
   private val requiredColsWithSfColPos: Array[((String, DataType), Int)] = requiredColsBySchemaOrdering
     .map(e => (e, sfColsLower.indexOf(e._1.toLowerCase)))
 
-  val parse = (sObject: SObject, updateOffset: Boolean) => {
+  /* If updateOffset = true then offset is stored */
+  val parse: (SObject, Boolean) => GenericInternalRow = (sObject: SObject, updateOffset: Boolean) => {
     val colValues: Array[XmlObject] = convertXmlObjectToXmlFieldsArray(sObject)
     val data: Array[Any] = {
       if (colValues.isEmpty) {

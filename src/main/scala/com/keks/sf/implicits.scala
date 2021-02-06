@@ -35,6 +35,15 @@ object implicits {
       arr.map(_.toLowerCase).contains(elem.toLowerCase)
     }
 
+    def intersectIgnoreCase(rightArr: Array[String]): Array[String] = {
+      val rightArrayLower = rightArr.map(_.toLowerCase)
+      arr.filter(leftCol => rightArrayLower.contains(leftCol.toLowerCase))
+    }
+
+    def equalsIgnoreCase(rightArr: Array[String]): Boolean = {
+      arr.map(_.toLowerCase).toSet == rightArr.map(_.toLowerCase).toSet
+    }
+
   }
 
   implicit class RichSOQL(soql: SOQLQuery) {

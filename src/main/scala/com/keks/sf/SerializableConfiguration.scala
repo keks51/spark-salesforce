@@ -8,6 +8,12 @@ import scala.util.control.NonFatal
 
 
 // TODO use scala Try
+/**
+  * org.apache.hadoop.conf.Configuration is not Serializable.
+  * Just a wrapper to achieve it.
+  *
+  * @param value org.apache.hadoop.conf.Configuration
+  */
 class SerializableConfiguration(@transient var value: Configuration) extends Serializable {
   private def writeObject(out: ObjectOutputStream): Unit = tryOrIOException {
     out.defaultWriteObject()

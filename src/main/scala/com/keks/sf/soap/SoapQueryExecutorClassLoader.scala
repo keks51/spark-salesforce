@@ -9,6 +9,14 @@ import scala.util.Try
 
 object SoapQueryExecutorClassLoader extends LogSupport {
 
+  /**
+    * Loading custom implementation of SoapQueryExecutor.
+    *
+    * @param className like com.keks.sf.soap.TrySoapQueryExecutor
+    * @param sfOptions query options
+    * @param soapConnection soap connection
+    * @param executorName like 'Driver' or 'PartitionId: 1'
+    */
   def loadClass(className: String,
                 sfOptions: SfOptions,
                 soapConnection: PartnerConnection,

@@ -1,7 +1,7 @@
-package com.keks.sf.soap.v2.streaming
+package com.keks.sf.soap.resultset
 
 import com.keks.sf.soap.SoapUtils.convertXmlObjectToXmlFieldsArray
-import com.keks.sf.soap.resultset.SfSoapResultSet
+import com.keks.sf.soap.v2.streaming.SfPartitionsReadWrite
 import com.keks.sf.soap.{SalesforceRecordParser, SfSparkPartition, SoapQueryExecutor}
 import com.keks.sf.util.{BatchTimeMetrics, SoqlUtils}
 import com.keks.sf.{LogSupport, SerializableConfiguration, SfOptions, SfResultSet}
@@ -14,22 +14,43 @@ import org.mule.tools.soql.SOQLParserHelper
 import scala.util.Try
 
 
+/**
+  * Like Jdbc result set for getting salesforce data
+  * while processing data by Spark Streaming.
+  * Before requesting new Soap batch and when hasNext = false executor metrics
+  * should be saved to checkPoint dir.
+  *
+  * @param sfOptions        spark query options
+  * @param firstQueryResult first soap query result
+  * @param soql             query soql
+  * @param sfRecordsParser  salesforce record parser
+  * @param sfPartition      executor partition
+  * @param queryExecutor    Soap query executor
+  * @param checkPointRW     util class to save metrics
+  * @param batchTimeMetrics batch metrics container
+  */
 class StreamingSoapResultSet(sfOptions: SfOptions,
                              firstQueryResult: QueryResult,
                              soql: String,
                              sfRecordsParser: SalesforceRecordParser,
                              sfPartition: SfSparkPartition,
                              queryExecutor: SoapQueryExecutor,
-                             partitionId: Int,
                              checkPointRW: SfPartitionsReadWrite,
                              batchTimeMetrics: BatchTimeMetrics) extends SfSoapResultSet(sfOptions = sfOptions,
                                                                                          firstQueryResult = firstQueryResult,
                                                                                          soql = soql,
-                                                                                         sfPartition = sfPartition,
-                                                                                         partitionId) {
+                                                                                         sfPartition = sfPartition) {
+
+  /* In streaming processing executor finishes processing if maxBatch number bound is reached. */
   val batchBoundNumber = sfOptions.streamingMaxBatches
   sfPartition.setRecordsToLoad(globalNumberOfRecords)
 
+  /**
+    * If batch query result isDone and last processed
+    * record is the last record in batch then hasNext = false.
+    * Also if batchBoundNumber is reached then hasNext = false.
+    * If hasNext = false then executor metrics should be updated.
+    */
   def hasNext: Boolean = {
     sfPartition.setLastProcessedRecordTime(getCurrentTime)
     val isLast = currentQueryResult.isDone
@@ -55,11 +76,17 @@ class StreamingSoapResultSet(sfOptions: SfOptions,
         recordsInSfBatch = recordsInBatch)
 
       checkPointRW.writeExecutorSfPartition(partitionId, sfPartition)
-      info(s"PartitionId: '$partitionId'. Query '$printSoql' finished. Loaded: $processedRecordCount in '$batchCounter' batches")
+      info(s"PartitionId: '$partitionId'. Query '$prettySoql' finished. Loaded: $processedRecordCount in '$batchCounter' batches")
     }
     next
   }
 
+  /**
+    * Getting record data as (isLast record, spark row)
+    * If all records were processed then next batch should be requested.
+    * Sometimes due to connection issues like 'Invalid query locator' new requested batch
+    * during retries can be empty and an additional check should be applied.
+    */
   def getRow: (Boolean, InternalRow) = {
     if (isBatchEmpty(batchCursor)) {
       sparkBatchProcessingTimes += math.max(System.currentTimeMillis() - sparkBatchProcessingStartTime, 0)
@@ -100,15 +127,30 @@ class StreamingSoapResultSet(sfOptions: SfOptions,
 
 object StreamingSoapResultSet extends LogSupport {
 
+  /**
+    * Creating StreamingSoapResultSet.
+    * Sometimes data queried by partition SOQL can be empty.
+    * For example, partition SOQL is: 'SELECT Id FROM User WHERE (Age >= 10 AND Age <= 20)' and
+    * returned batch can be empty if no data exists for this period.
+    * While streaming previous partition can be executed again, then query locator is used.
+    * Creating SalesforceRecordParser function.
+    *
+    * @param sfOptions                    spark options wrapped in SfOptions
+    * @param soql                         partition soql
+    * @param requiredColsBySchemaOrdering result schema
+    * @param queryExecutor                Soap query executor
+    * @param hadoopConf                   hadoop conf
+    * @param checkpointLocation           streaming checkpoint dir location
+    * @param previousSfStreamingPartition executor partition
+    */
   def apply(sfOptions: SfOptions,
             soql: String,
             requiredColsBySchemaOrdering: Array[(String, DataType)],
             queryExecutor: SoapQueryExecutor,
-            partitionId: Int,
             hadoopConf: SerializableConfiguration,
-            offsetColName: String,
             checkpointLocation: String,
             previousSfStreamingPartition: SfSparkPartition): SfResultSet = {
+    val partitionId = previousSfStreamingPartition.id
     val batchTimeMetrics = new BatchTimeMetrics()
     val previousExecutorMetrics = previousSfStreamingPartition.executorMetrics
     val firstQueryResult = previousExecutorMetrics.queryLocator.map { queryLocator =>
@@ -136,7 +178,7 @@ object StreamingSoapResultSet extends LogSupport {
         headRowColNames,
         requiredColsBySchemaOrdering,
         previousSfStreamingPartition,
-        offsetColName,
+        sfOptions.offsetColumn,
         previousSfStreamingPartition.offsetValueIsString)
       new StreamingSoapResultSet(sfOptions,
                                  firstQueryResult,
@@ -144,7 +186,6 @@ object StreamingSoapResultSet extends LogSupport {
                                  sfRecordParser,
                                  previousSfStreamingPartition,
                                  queryExecutor,
-                                 partitionId,
                                  checkPointRW,
                                  batchTimeMetrics)
     }

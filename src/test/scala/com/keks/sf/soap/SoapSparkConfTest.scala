@@ -1,6 +1,6 @@
 package com.keks.sf.soap
 
-import com.keks.sf.SfOptions
+import com.keks.sf.{SALESFORCE_SOAP_V1, SfOptions}
 import com.keks.sf.SfOptions._
 import com.keks.sf.exceptions.SoqlIsNotDefinedException
 import org.apache.spark.sql.DataFrameReader

@@ -5,13 +5,24 @@ import com.sforce.async.{ConcurrencyMode, ContentType, JobInfo, OperationEnum}
 import com.sforce.ws.ConnectorConfig
 
 
+/**
+  * Salesforce connection configuration utils
+  */
 object SfConfigUtils {
 
-  val authEndPointBuilder: (Boolean, String, String) => String =
-    (useHttps, authEndPoint: String, apiVersion: String) => {
-      val protocol = if (useHttps) "https" else "http"
-      s"$protocol://$authEndPoint/services/Soap/u/$apiVersion"
-    }
+  /**
+    * Building end point like 'https://login.salesforce.com/services/Soap/u/39.0'
+    * @param useHttps https or http
+    * @param authEndPoint like login.salesforce.com
+    * @param apiVersion like 39.0
+    * @return https://login.salesforce.com/services/Soap/u/39.0
+    */
+  def getAuthEndPoint(useHttps: Boolean,
+                      authEndPoint: String,
+                      apiVersion: String): String = {
+    val protocol = if (useHttps) "https" else "http"
+    s"$protocol://$authEndPoint/services/Soap/u/$apiVersion"
+  }
 
   def createJobInfo(tableName: String): JobInfo = {
     val job = new JobInfo()
@@ -22,11 +33,15 @@ object SfConfigUtils {
     job
   }
 
+  /**
+    * Creating ConnectorConfig based on query options
+    * @param sfOptions query options
+    */
   def createSfConnectorConfig(sfOptions: SfOptions): ConnectorConfig = {
     val config = new ConnectorConfig()
     config.setUsername(sfOptions.userName)
     config.setPassword(sfOptions.userPassword)
-    config.setAuthEndpoint(authEndPointBuilder(sfOptions.useHttps, sfOptions.authEndPoint, sfOptions.apiVersion))
+    config.setAuthEndpoint(getAuthEndPoint(sfOptions.useHttps, sfOptions.authEndPoint, sfOptions.apiVersion))
     config.setCompression(sfOptions.compression)
     config.setTraceMessage(sfOptions.showTrace)
     for {
@@ -53,33 +68,6 @@ object SfConfigUtils {
     config
   }
 
-  def createSfConnectorConfig(userName: String,
-                              userPassword: String,
-                              useHttps: Boolean = true,
-                              authEndPoint: String,
-                              apiVersion: String,
-                              enableCompression: Boolean,
-                              enableShowTrace: Boolean,
-                              proxyHostOpt: Option[String],
-                              proxyPortOpt: Option[Int],
-                              connectionTimeout: Int = 30000): ConnectorConfig = {
-    val config = new ConnectorConfig()
-    config.setConnectionTimeout(connectionTimeout)
-    config.setUsername(userName)
-    config.setPassword(userPassword)
-    config.setAuthEndpoint(authEndPointBuilder(useHttps, authEndPoint, apiVersion))
-    config.setCompression(enableCompression)
-    config.setTraceMessage(enableShowTrace)
-    //        config.setSessionRenewer(sessionRenewer)
-    for {
-      proxyHost <- proxyHostOpt
-      proxyPort <- proxyPortOpt
-    } yield {
-      config.setProxy(proxyHost, proxyPort)
-    }
-    config
-  }
-
   def createBulkConfig(sfConnectionConfig: ConnectorConfig, apiVersion: String) = {
     val sfSessionId = sfConnectionConfig.getSessionId
     val soapEndPoint = sfConnectionConfig.getServiceEndpoint
@@ -93,6 +81,11 @@ object SfConfigUtils {
     config
   }
 
+  /**
+    * Pretty print of ConnectorConfig
+    * @param conf ConnectorConfig
+    * @return pretty string
+    */
   def printConnectorConfig(conf: ConnectorConfig): String = {
     val get: (ConnectorConfig => Any) => Any = (f: ConnectorConfig => Any) => Option(f(conf)).map(_.toString).getOrElse("Not defined")
     s"""Cannot connect to Salesforce.

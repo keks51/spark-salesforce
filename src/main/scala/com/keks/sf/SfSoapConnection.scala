@@ -1,25 +1,34 @@
-package com.keks.sf.util
+package com.keks.sf
 
 import com.keks.sf.exceptions.SalesforceConnectionException
 import com.keks.sf.implicits.RichTry
-import com.keks.sf.soap.SoapUtils.convertXmlObjectToXmlFieldsArray
 import com.keks.sf.soap.{SoapQueryExecutor, SoapQueryExecutorClassLoader}
-import com.keks.sf.{LogSupport, SfOptions}
+import com.keks.sf.soap.SoapUtils.convertXmlObjectToXmlFieldsArray
+import com.keks.sf.util.{SfConfigUtils, SfUtils, UniqueQueryId}
 import com.sforce.soap.partner.{Field, PartnerConnection, QueryResult}
 import com.sforce.ws.ConnectorConfig
 
 import scala.util.Try
 
 
-case class SfSoapConnection(soapConnection: PartnerConnection, queryExecutor: SoapQueryExecutor) extends LogSupport {
+case class SfSoapConnection(soapConnection: PartnerConnection,
+                            tableName: String,
+                            queryExecutor: SoapQueryExecutor)(implicit queryId: UniqueQueryId) extends LogSupport {
 
-  def describeObject(tableName: String): Array[Field] = {
-    soapConnection
-      .describeSObject(tableName)
-      .getFields
-      .filterNot(e => Seq("address", "location").contains(e.getType.name.toLowerCase))
-  }
+  /* Salesforce column name with Spark Sql DataType */
+  lazy val sfTableDataTypeMap = soapConnection
+    .describeSObject(tableName)
+    .getFields
+    .filterNot(e => Seq("address", "location").contains(e.getType.name.toLowerCase))
+    .map(SfUtils.parseSfFieldToDataType).toMap
 
+  /**
+    * Counting table by specific query.
+    *
+    * @param soql query
+    * @param isQueryAll soap query all or not
+    * @return number of records
+    */
   def countTable(soql: String, isQueryAll: Boolean): Int = {
     val queryResult: QueryResult = if (isQueryAll) {
       soapConnection.queryAll(soql)
@@ -29,21 +38,24 @@ case class SfSoapConnection(soapConnection: PartnerConnection, queryExecutor: So
     queryResult.getSize
   }
 
-  def getLatestOffsetFromSF(offsetColName: String,
-                            tableName: String): Option[String] = {
+  /**
+    * Finding latest offset in salesforce table
+    * @param offsetColName column name
+    * @return
+    */
+  def getLatestOffsetFromSF(offsetColName: String): Option[String] = {
     val soql = s"SELECT $offsetColName FROM $tableName ORDER BY $offsetColName DESC LIMIT 1"
-    info(s"Finding the last value in table: '$tableName' for column: '$offsetColName'")
+    info(s"ID: $queryId. Finding the last value in table: '$tableName' for column: '$offsetColName'")
     val value = getFirstRecordFirstColValue(soql)
-    info(s"Last value in table: '$tableName' for column: '$offsetColName' is: '$value'")
+    info(s"ID: $queryId. Last value in table: '$tableName' for column: '$offsetColName' is: '$value'")
     value
   }
 
-  def getFirstOffsetFromSF(offsetColName: String,
-                           tableName: String): Option[String] = {
+  def getFirstOffsetFromSF(offsetColName: String): Option[String] = {
     val soql = s"SELECT $offsetColName FROM $tableName ORDER BY $offsetColName LIMIT 1"
-    info(s"Finding the first value in table: '$tableName' for column: '$offsetColName'")
+    info(s"ID: $queryId. Finding the first value in table: '$tableName' for column: '$offsetColName'")
     val value = getFirstRecordFirstColValue(soql)
-    info(s"First value in table: '$tableName' for column: '$offsetColName' is: '$value'")
+    info(s"ID: $queryId. First value in table: '$tableName' for column: '$offsetColName' is: '$value'")
     value
   }
 
@@ -69,8 +81,10 @@ case class SfSoapConnection(soapConnection: PartnerConnection, queryExecutor: So
 
 object SfSoapConnection extends LogSupport {
 
-  def apply(sfOptions: SfOptions, connectionNameId: String): SfSoapConnection = {
-    info(s"Connecting to Salesforce for connection name: '$connectionNameId'")
+  def apply(sfOptions: SfOptions,
+            sfTableName: String,
+            connectionNameId: String)(implicit queryId: UniqueQueryId): SfSoapConnection = {
+    debug(s"Id: $queryId. Connecting to Salesforce for connection name: '$connectionNameId'")
     val sfConnectionConfig: ConnectorConfig = SfConfigUtils.createSfConnectorConfig(sfOptions)
     val soapConnection = getSoapConnection(sfConnectionConfig, sfOptions.checkConnectionRetries, sfOptions.checkConnectionRetrySleepMin, connectionNameId)
     val queryExecutor =  SoapQueryExecutorClassLoader.loadClass(
@@ -78,7 +92,7 @@ object SfSoapConnection extends LogSupport {
       sfOptions,
       soapConnection,
       connectionNameId)
-    new SfSoapConnection(soapConnection, queryExecutor)
+    new SfSoapConnection(soapConnection, sfTableName, queryExecutor)
   }
 
   private def getSoapConnection(conf: ConnectorConfig,
@@ -90,7 +104,7 @@ object SfSoapConnection extends LogSupport {
       error(s"Requester: '$requesterSide'. Connection failed. Out of retires. Aborting")
       throw new SalesforceConnectionException(conf)
     } else {
-      info(s"Requester: '$requesterSide'. Connecting to Salesforce")
+      debug(s"Requester: '$requesterSide'. Connecting to Salesforce")
       Try(new PartnerConnection(conf)).onFailure { exp =>
         warn(s"Requester: '$requesterSide'. Cannot connect to Salesforce. Retrying: '$leftTries'.\n$exp")
         Thread.sleep(sleepMillis)

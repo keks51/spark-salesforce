@@ -13,12 +13,33 @@ import org.mule.tools.soql.SOQLParserHelper
 import scala.util.Try
 
 
+/**
+  * Soap query executor implementation.
+  *
+  * @param sfOptions spark salesforce query options
+  * @param soapConnection soap connection
+  * @param executorName like 'Driver' or 'PartitionId: 1'
+  */
 class TrySoapQueryExecutor(override val sfOptions: SfOptions,
                            override val soapConnection: PartnerConnection,
                            override val executorName: String) extends SoapQueryExecutor(sfOptions,
                                                                                         soapConnection,
                                                                                         executorName) with LogSupport {
 
+  /**
+    * Executing query against Salesforce.
+    * If invalid query locator issue then batch should be retried
+    * and lowerBound offset condition should be >=. That will load already
+    * loaded data and produce duplicates but guarantee data AT_LEAST_ONE semantic and
+    * no data will be lost.
+    * If offset column is not defined then loading is aborted.
+    *
+    * @param soql soql query
+    * @param batchCounter batch number for logging
+    * @param queryLocatorOpt soap batch query locator
+    * @param lastOffsetOpt last offset if needed
+    *  @return new batch
+    */
   def tryToQuery(soql: String,
                  batchCounter: Int,
                  queryLocatorOpt: Option[String],
@@ -58,10 +79,28 @@ class TrySoapQueryExecutor(override val sfOptions: SfOptions,
 
 }
 
+/**
+  * Executing SOQL query against Salesforce table.
+  * Handling exceptions and executing retries.
+  * Custom implementation can be used by SoapQueryExecutorClassLoader.
+  *
+  * @param sfOptions spark salesforce query options
+  * @param soapConnection soap connection
+  * @param executorName like 'Driver' or 'PartitionId: 1'
+  */
 abstract class SoapQueryExecutor(val sfOptions: SfOptions,
                                  val soapConnection: PartnerConnection,
                                  val executorName: String) extends Serializable {
 
+  /**
+    * Trying to execute
+    *
+    * @param soql soql query
+    * @param batchCounter batch number for logging
+    * @param queryLocatorOpt soap batch query locator
+    * @param lastOffsetOpt last offset if needed
+    * @return new batch
+    */
   def tryToQuery(soql: String,
                  batchCounter: Int,
                  queryLocatorOpt: Option[String],

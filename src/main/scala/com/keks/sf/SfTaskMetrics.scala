@@ -5,6 +5,12 @@ import com.keks.sf.util.{DurationPrinter, FieldModifier}
 import org.apache.spark.executor.InputMetrics
 
 
+/**
+  * Used in Spark Datasource Api V1.
+  * Wrapper of org.apache.spark.executor.InputMetrics
+  * for changing records read and write
+  * @param inputMetrics org.apache.spark.executor.InputMetrics
+  */
 case class SfTaskMetrics(inputMetrics: InputMetrics) {
 
   private var time: Long = 0

@@ -12,7 +12,14 @@ import scala.util.Try
 
 object SoapUtils extends LogSupport {
 
-  // first 2 cols are hardcoded table name and id
+  //
+  /**
+    * Converting XmlObject to array of XmlObject which represents table record.
+    * First 2 cols are hardcoded table name and id.
+    *
+    * @param xmlRecord response from salesforce
+    * @return array of XmlObjects
+    */
   def convertXmlObjectToXmlFieldsArray(xmlRecord: XmlObject): Array[XmlObject] =
     xmlRecord
       .getChildren
@@ -21,7 +28,14 @@ object SoapUtils extends LogSupport {
       .toArray
 
 
-
+  /**
+    * Checking connection with Salesforce
+    *
+    * @param soapConnection connector
+    * @param retries number of retries
+    * @param sleepMillis sleep between retries
+    * @param requesterSide like 'Driver' for logging
+    */
   def checkConnection(soapConnection: PartnerConnection,
                       retries: Int,
                       sleepMillis: Long,
