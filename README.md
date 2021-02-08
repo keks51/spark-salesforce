@@ -8,7 +8,7 @@ This package can be added to Spark using the `--packages` command line option. F
 ## Using with Spark shell
 
 ## Features
-Salesforce Data Source for Spark supports reading(writing is not yet implemented) of Salesforce data from Spark SQL.
+Salesforce Data Source for Spark supports reading(writing is not yet implemented) Salesforce data from Spark SQL.
 * **Automatic schema conversion** -
   it supports most conversions between Spark SQL and salesforce records except (address, location) since they are returned with null values by the SOAP API and not supported at all by the Bulk API
 * **Stream processing** - only structured streaming
@@ -16,8 +16,20 @@ Salesforce Data Source for Spark supports reading(writing is not yet implemented
 * **Soap connection** - loading data via soap
 * **Supporting Spark Datasource Api v1 and v2** - supporting old and new datasource api
 * **Custom spark UI for query metrics** - additional streaming metrics in spark ui
+* **Using predefined schema** - using spark .schema(...). Columns that doesn't exist in Salesforce will be null
+* **Elimination of unneeded columns** - selecting columns defined in spark query.
+* **Filtration using selected predicates** - push spark filters to SOQL query.
 ## Limitations
-- Aggregations in SOQL query are not supported. Use Spark aggregations
+- Aggregations in SOQL query are not supported. Use Spark aggregations.
+- Salesfor query can be like hahahahahha
+## Coming soon
+- Bulk api
+- PK chunking
+- Wave Api
+- Saving data to Salesforce
+- DStreams
+- Watermarks
+- Loading data by partition bounds defined by User
 ## Supported types for Salesforce -> Spark SQL conversion
 |           SF type          | Spark SQL type |
 |----------------------------|----------------|
@@ -198,3 +210,9 @@ val query = streamDF.writeStream
 query.awaitTermination()  // this is need to be set along  with .option(SF_STREAMING_LOAD_AVAILABLE_DATA, value = false)
 query.stop()
 ```
+## Recommendations
+- Do not try to load large tables with spark batch. Use streaming load once approach.
+- Don't forget to use .cache while applying diffrent transformations to same Salesforce data.
+- Don't use one Salesforce account for more than 10 queries at the same time. Of course connector successfully handles 
+  this issue and no data will be lost but you may have a significant performance degradation
+- 

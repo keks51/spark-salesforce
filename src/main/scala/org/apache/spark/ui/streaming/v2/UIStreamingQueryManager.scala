@@ -1,7 +1,7 @@
 package org.apache.spark.ui.streaming.v2
 
-import com.keks.sf.LogSupport
-import com.keks.sf.soap.SfSparkPartition
+import com.keks.spark.sf.LogSupport
+import com.keks.spark.sf.soap.SfSparkPartition
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.ui.streaming.v2.TransformationStatus.TransformationStatus
 

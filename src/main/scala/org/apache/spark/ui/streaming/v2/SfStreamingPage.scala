@@ -1,8 +1,8 @@
 package org.apache.spark.ui.streaming.v2
 
-import com.keks.sf.soap.ExecutorMetrics
-import com.keks.sf.util.DurationPrinter
-import com.keks.sf.util.LetterTimeUnit._
+import com.keks.spark.sf.soap.ExecutorMetrics
+import com.keks.spark.sf.util.DurationPrinter
+import com.keks.spark.sf.util.LetterTimeUnit._
 import org.apache.spark.ui.streaming.v2.TransformationStatus.TransformationStatus
 import org.apache.spark.ui.{SparkUITab, UIUtils, WebUIPage}
 
