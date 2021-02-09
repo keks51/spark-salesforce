@@ -1,9 +1,26 @@
 # Spark Salesforce Connector
 A library for connecting Spark with Salesforce
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.keks51/spark-salesforce/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.keks51/spark-salesforce)
 ## Requirements
 This library requires Spark 2.x.
 ## Linking
-This package can be added to Spark using the `--packages` command line option. For example, to include it when starting the spark shell:
+You can link against this library in your program at the following coordinates:
+**Using Maven:**
+```xml
+<dependency>
+    <groupId>io.github.keks51</groupId>
+    <artifactId>spark-salesforce</artifactId>
+    <version>version</version>
+</dependency>
+```
+This library can also be added to Spark jobs launched through `spark-shell` or `spark-submit` by using the `--packages` command line option.
+For example, to include it when starting the spark shell:
+
+```
+$ bin/spark-shell --packages io.github.keks51:spark-salesforce:version
+```
+
+Unlike using `--jars`, using `--packages` ensures that this library and its dependencies will be added to the classpath. The `--packages` argument can also be used with `bin/spark-submit`.
 
 ## Using with Spark shell
 
