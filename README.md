@@ -1,5 +1,5 @@
 # Spark Salesforce Connector
-A library for connecting Spark with Salesforce
+A library for connecting Spark with Salesforce  
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.keks51/spark-salesforce/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.keks51/spark-salesforce)
 ## Requirements
 This library requires Spark 2.x.
