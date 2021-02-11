@@ -6,7 +6,7 @@
 
     <groupId>io.github.keks51</groupId>
     <artifactId>spark-salesforce</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 
     <name>spark-salesforce</name>
     <description>spark salesforce connector</description>

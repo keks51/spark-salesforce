@@ -141,7 +141,7 @@ object SfUtils extends LogSupport with Serializable {
         }
         infoQ(s"Partitions are: \n   ${parts.map(_.getWhereClause).zipWithIndex.map(e => s"${e._2}) ${e._1}").mkString("   \n")}")
         parts
-      case (None, None) =>
+      case _ =>
         infoQ(s"Salesforce table: '$sfTableName' is empty")
         Array.empty
     }
