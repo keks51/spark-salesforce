@@ -7,8 +7,8 @@ import com.keks.spark.sf.{SALESFORCE_SOAP_V1, SALESFORCE_SOAP_V2}
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrameReader, Dataset}
 import utils.SalesforceColumns._
+import utils.xml._
 import utils.{DataFrameEquality, MockedServer, TestBase, TmpDirectory}
-import xml._
 
 import java.sql.Timestamp
 

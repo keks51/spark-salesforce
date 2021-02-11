@@ -45,7 +45,6 @@ object UIStreamingQueryManager extends LogSupport {
             maxOffset: Option[String],
             queryConf: QueryConf)(implicit spark: SparkSession): UIStreamingQueryManager = {
     init()
-    println("fdfdfd")
     UIStreamingQueryManager(sfUiStreamingPageOpt.get, queryName, idCounter.incrementAndGet(), streamingStartTime, soql, offsetCol, initialOffset, maxOffset, queryConf)
   }
 

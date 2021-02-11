@@ -18,8 +18,6 @@ class DefaultSource
     with DataSourceRegister
     with LogSupport {
 
-  implicit val uniqueQueryId: UniqueQueryId = UniqueQueryId.getUniqueQueryId
-
   /**
     * Creating Salesforce source relation
     *
@@ -44,6 +42,7 @@ class DefaultSource
     val sfOptions = SfOptions(parameters, sparkConf)
     val soqlStr = sfOptions.soql
     val sfTableName = SoqlUtils.getTableNameFromNotParsedSoql(soqlStr)
+    implicit val uniqueQueryId: UniqueQueryId = sfOptions.uniqueQueryId
     implicit val sfSoapConnection: SfSoapConnection = SfSoapConnection(sfOptions = sfOptions, sfTableName, "Driver")
     implicit val parsedSoqlData: ParsedSoqlData = ParsedSoqlData(soqlStr, sfSoapConnection.sfTableDataTypeMap, sfOptions.offsetColumn)
     SoapDataSourceBatchReaderV1(sfOptions, Option(schema))(sqlContext.sparkSession, uniqueQueryId, sfSoapConnection, parsedSoqlData)

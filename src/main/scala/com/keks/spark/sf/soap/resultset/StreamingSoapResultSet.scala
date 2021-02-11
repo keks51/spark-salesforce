@@ -3,7 +3,7 @@ package com.keks.spark.sf.soap.resultset
 import com.keks.spark.sf.soap.SoapUtils.convertXmlObjectToXmlFieldsArray
 import com.keks.spark.sf.soap.v2.streaming.SfPartitionsReadWrite
 import com.keks.spark.sf.soap.{SalesforceRecordParser, SfSparkPartition, SoapQueryExecutor}
-import com.keks.spark.sf.util.{BatchTimeMetrics, SoqlUtils}
+import com.keks.spark.sf.util.{BatchTimeMetrics, SoqlUtils, UniqueQueryId}
 import com.keks.spark.sf.{LogSupport, SerializableConfiguration, SfOptions, SfResultSet}
 import com.sforce.soap.partner.QueryResult
 import com.sforce.ws.bind.XmlObject
@@ -36,7 +36,8 @@ class StreamingSoapResultSet(sfOptions: SfOptions,
                              sfPartition: SfSparkPartition,
                              queryExecutor: SoapQueryExecutor,
                              checkPointRW: SfPartitionsReadWrite,
-                             batchTimeMetrics: BatchTimeMetrics) extends SfSoapResultSet(sfOptions = sfOptions,
+                             batchTimeMetrics: BatchTimeMetrics)
+                            (implicit uniqueQueryId: UniqueQueryId) extends SfSoapResultSet(sfOptions = sfOptions,
                                                                                          firstQueryResult = firstQueryResult,
                                                                                          soql = soql,
                                                                                          sfPartition = sfPartition) {
@@ -60,7 +61,7 @@ class StreamingSoapResultSet(sfOptions: SfOptions,
       if (recordsInBatch - 1 == batchCursor) {
         val isBound = batchBoundNumber == batchCounter
         if (isBound) {
-          info(s"Partition: $partitionId. Loaded last batch of limit: '$batchBoundNumber'. Stopping loading and saving query locator.")
+          infoQ(s"Partition: $partitionId. Loaded last batch of limit: '$batchBoundNumber'. Stopping loading and saving query locator.")
           sfPartition.setQueryLocator(currentQueryResult.getQueryLocator)
         }
         !(isLast || isBound)
@@ -76,7 +77,7 @@ class StreamingSoapResultSet(sfOptions: SfOptions,
         recordsInSfBatch = recordsInBatch)
 
       checkPointRW.writeExecutorSfPartition(partitionId, sfPartition)
-      info(s"PartitionId: '$partitionId'. Query '$prettySoql' finished. Loaded: $processedRecordCount in '$batchCounter' batches")
+      infoQ(s"PartitionId: '$partitionId'. Query '$prettySoql' finished. \n   Loaded: '$processedRecordCount' records in '$batchCounter' batches")
     }
     next
   }
@@ -101,7 +102,7 @@ class StreamingSoapResultSet(sfOptions: SfOptions,
       recordsInBatch = currentBatch.length
 
       batchCursor = -1
-      info(s"PartitionId: '$partitionId'. Loaded batch: '$batchCounter' of '$maxBatchNumber'. Sum of records: '$processedRecordCount'")
+      infoQ(s"PartitionId: '$partitionId'. Loaded batch: '$batchCounter' of '$maxBatchNumber'. Sum of records: '$processedRecordCount'")
       sparkBatchProcessingStartTime = System.currentTimeMillis()
     }
 
@@ -149,14 +150,15 @@ object StreamingSoapResultSet extends LogSupport {
             queryExecutor: SoapQueryExecutor,
             hadoopConf: SerializableConfiguration,
             checkpointLocation: String,
-            previousSfStreamingPartition: SfSparkPartition): SfResultSet = {
+            previousSfStreamingPartition: SfSparkPartition)
+           (implicit uniqueQueryId: UniqueQueryId): SfResultSet = {
     val partitionId = previousSfStreamingPartition.id
     val batchTimeMetrics = new BatchTimeMetrics()
     val previousExecutorMetrics = previousSfStreamingPartition.executorMetrics
     val firstQueryResult = previousExecutorMetrics.queryLocator.map { queryLocator =>
       val previousOffset = previousExecutorMetrics.offset
       val printSoql = SoqlUtils.printSOQL(SOQLParserHelper.createSOQLData(soql), sfOptions.isSelectAll)
-      info(s"PartitionId: '$partitionId'. Continue loading from previous locator: '$queryLocator' with offset: '$previousOffset'. Soql: '$printSoql'")
+      infoQ(s"PartitionId: '$partitionId'. Continue loading from previous locator: '$queryLocator' with offset: '$previousOffset'. Soql: '$printSoql'")
       batchTimeMetrics
         .withBatchResponseTimeTaken(queryExecutor.tryToQuery(
           soql,

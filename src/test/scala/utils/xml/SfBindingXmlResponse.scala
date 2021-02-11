@@ -1,4 +1,4 @@
-package xml
+package utils.xml
 
 
 /**
@@ -11,7 +11,7 @@ package xml
 case class SfBindingXmlResponse(endPoint: String, apiVersion: String, id: String) {
 
   override def toString = {
-    s"""<?xml version="1.0" encoding="UTF-8"?>
+    s"""<?utils.xml version="1.0" encoding="UTF-8"?>
        |<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
        |                  xmlns="urn:partner.soap.sforce.com"
        |                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">

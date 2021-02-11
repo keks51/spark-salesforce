@@ -1,10 +1,10 @@
-package xml
+package utils.xml
 
 
 case class InvalidQueryLocatorResponse() {
 
   override def toString = {
-    """<?xml version="1.0" encoding="UTF-8"?>
+    """<?utils.xml version="1.0" encoding="UTF-8"?>
       |<soapenv:Envelope
       |        xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
       |        xmlns:sf="urn:fault.partner.soap.sforce.com"

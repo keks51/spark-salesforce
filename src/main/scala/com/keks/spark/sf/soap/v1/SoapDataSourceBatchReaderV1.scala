@@ -45,7 +45,7 @@ case class SoapDataSourceBatchReaderV1(sfOptions: SfOptions,
   /* Getting initial Start offset value from conf or querying Salesforce Table */
   lazy val initialStartOffset = sfOptions
     .initialOffsetOpt
-    .map { offset => info(s"Taking initial offset from configuration: [$offset]."); offset }
+    .map { offset => infoQ(s"Taking initial offset from configuration: [$offset]."); offset }
     .orElse {
       sfSoapConnection.getFirstOffsetFromSF(parsedSoqlData.offsetColName)
     }
@@ -53,7 +53,7 @@ case class SoapDataSourceBatchReaderV1(sfOptions: SfOptions,
   /* Getting initial End offset value from conf or querying Salesforce Table */
   lazy val initialEndOffset = sfOptions
     .sfEndOffsetOpt
-    .map { offset => info(s"Taking end offset from configuration: [$offset]."); offset }
+    .map { offset => infoQ(s"Taking end offset from configuration: [$offset]."); offset }
     .orElse {
       sfSoapConnection.getLatestOffsetFromSF(parsedSoqlData.offsetColName)
     }
@@ -99,10 +99,10 @@ case class SoapDataSourceBatchReaderV1(sfOptions: SfOptions,
     }
     val (rowSchema, resultSoql) = getRowSchemaAndSoql(requiredColumns, predefinedSchema)
 
-    val soqlWithFilters = SfUtils.addFilters(resultSoql, notNullFilters)
-
+    val soqlWithFilters = SfUtils.addFilters(resultSoql, notNullFilters).toSOQLText
+    infoQ(s"Soql: $soqlWithFilters")
     new SoapPartitionV1(
-      soqlFromDriver = soqlWithFilters.toSOQLText,
+      soqlFromDriver = soqlWithFilters,
       sfOptions,
       rowSchema,
       initialPartitions).asInstanceOf[RDD[Row]]

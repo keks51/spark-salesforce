@@ -3,6 +3,7 @@ package com.keks.spark.sf.soap.v2.streaming
 import com.keks.spark.sf.LogSupport
 import com.keks.spark.sf.soap.v2.streaming.SfPartitionsReadWrite.{SF_DRIVER_PARTITIONS, SF_EXECUTORS_PARTITIONS_DIR, SF_EXECUTOR_PARTITION_FILE_NAME}
 import com.keks.spark.sf.soap.{SfSparkPartition, SfStreamingPartitions}
+import com.keks.spark.sf.util.UniqueQueryId
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileAlreadyExistsException, Path}
@@ -28,7 +29,8 @@ import java.util.ConcurrentModificationException
   * @param conf hadoop conf
   */
 case class SfPartitionsReadWrite(checkpointLocation: String,
-                                 conf: Configuration) extends LogSupport {
+                                 conf: Configuration)
+                                (implicit uniqueQueryId: UniqueQueryId) extends LogSupport {
 
   implicit val formats: DefaultFormats.type = DefaultFormats
 
@@ -44,18 +46,18 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
       try {
         val reader = new InputStreamReader(input, StandardCharsets.UTF_8)
         val res = Some(Serialization.read[SfStreamingPartitions](reader))
-        info(s"Loaded driver partitions from path: '${sfPartitionsPath.toString}'")
+        infoQ(s"Loaded driver partitions from path: '${sfPartitionsPath.toString}'")
         res
       } catch {
         case ise: IllegalStateException =>
           // re-throw the exception with the log file path added
           throw new IllegalStateException(
-            s"Failed to read $SF_DRIVER_PARTITIONS file in $sfPartitionsPath. ${ise.getMessage}", ise)
+            s"QueryId: $uniqueQueryId. Failed to read $SF_DRIVER_PARTITIONS file in $sfPartitionsPath. ${ise.getMessage}", ise)
       } finally {
         IOUtils.closeQuietly(input)
       }
     } else {
-      warn(s"Unable to find $SF_DRIVER_PARTITIONS file in path $sfPartitionsPath")
+      warnQ(s"Unable to find $SF_DRIVER_PARTITIONS file in path $sfPartitionsPath")
       None
     }
   }
@@ -74,7 +76,7 @@ case class SfPartitionsReadWrite(checkpointLocation: String,
     try {
       Serialization.write(sfPartitions, out)
       out.close()
-      info(s"SfPartitions were saved in path: '$sfPartitionsPath''")
+      infoQ(s"SfPartitions were saved in path: '$sfPartitionsPath''")
     } catch {
       case e: FileAlreadyExistsException =>
         out.cancel()

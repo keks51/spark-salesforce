@@ -111,22 +111,22 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
     * @return
     */
   def initializeStreaming = {
-    info(s"Initializing. Finding partitions from previous loading.")
+    infoQ(s"Initializing. Finding partitions from previous loading.")
     sfPartitionsRW.deleteExecutorsPartitionsDir()
     val (partitions, lastOffset) = sfPartitionsRW
       .readDriverSfPartitions
       .map { previousPartitions =>
         val SfStreamingPartitions(partitions, maxUpperBoundOffset) = previousPartitions
         if (partitions.nonEmpty) {
-          info(s"Loaded previous partitions: \n${partitions.map(e => s"ID: '${e.id}'. ${e.getWhereClause}. Finished: ${e.executorMetrics.isDone}").mkString("\n")}")
+          infoQ(s"Loaded previous partitions: \n${partitions.map(e => s"ID: '${e.id}'. ${e.getWhereClause}. Finished: ${e.executorMetrics.isDone}").mkString("\n")}")
         } else {
-          info(s"No previous partition. Continue polling Salesforce with latest offset: '${maxUpperBoundOffset.getOrElse("None")}'")
+          infoQ(s"No previous partition. Continue polling Salesforce with latest offset: '${maxUpperBoundOffset.getOrElse("None")}'")
         }
-        info(s"Continue streaming, max offset is: '$maxUpperBoundOffset'")
+        infoQ(s"Continue streaming, max offset is: '$maxUpperBoundOffset'")
         (previousPartitions.partitions, maxUpperBoundOffset)
       }
       .getOrElse {
-        info(s"No previous partitions. Start loading from the the first record")
+        infoQ(s"No previous partitions. Start loading from the the first record")
         val partitions: Array[SfSparkPartition] = initialPartitions
         sfPartitionsRW.writeDriverSfPartitions(SfStreamingPartitions(partitions, initialEndOffset))
         (partitions, initialEndOffset)
@@ -154,9 +154,8 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
     queryUIOpt.foreach(_.updateLastMicroBatchTime(System.currentTimeMillis))
     microBatchesCount += 1
 
-    println(s"isNewData: $waitingForNewData")
     val printSoql = SoqlUtils.printSOQL(soqlToQuery, isSelectAll)
-    debug(s"2Salesforce query is: $printSoql")
+    debugQ(s"Salesforce query is: $printSoql")
     toProcessPartitions.map { streamingPartition =>
       new StreamingSoapPartitionV2(
         soqlFromDriver = soqlToQuery,
@@ -176,10 +175,10 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
     * @param `end` end offset
     */
   override def setOffsetRange(start: Optional[Offset], `end`: Optional[Offset]): Unit = {
-    debug(s"SetOffsetRange START: $start")
-    debug(s"SetOffsetRange END: ${`end`}")
+    debugQ(s"SetOffsetRange START: $start")
+    debugQ(s"SetOffsetRange END: ${`end`}")
     if (`end`.isPresent) {
-      debug("SetOffsetRange moving end to start")
+      debugQ("SetOffsetRange moving end to start")
       sfStartOffset = Some(SfOffset(`end`.get()))
     }
   }
@@ -189,7 +188,7 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
     * Just a mock.
     */
   override def getStartOffset: Offset = {
-    debug("GetStartOffset")
+    debugQ("GetStartOffset")
     throw new RuntimeException("Start offset is not defined")
   }
 
@@ -209,7 +208,7 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
 
     queryUIOpt.foreach(_.updateMaxOffset(maxOffset)) // updating ui
 
-    info(s"Recreating partitions. Previous: \n${printPartitions(processedPartitions)}")
+    infoQ(s"Recreating partitions. Previous: \n${printPartitions(processedPartitions)}")
     if (!waitingForNewData) loadedRecordsSum = loadedRecordsSum + processedPartitions.map(_.executorMetrics.loadedRecords).sum
 
     toProcessPartitions = PartitionSplitter.recreateSfSparkPartitions(processedPartitions, sfOptions.sfLoadNumPartitions, offsetColName)
@@ -221,26 +220,26 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
     queryUIOpt.foreach(_.updateMetrics(loadedRecordsSum, microBatchesCount, toProcessPartitions))
 
     if (toProcessPartitions.nonEmpty) {
-      info(s"Recreated partitions. New: \n${printPartitions(toProcessPartitions)}")
+      infoQ(s"Recreated partitions. New: \n${printPartitions(toProcessPartitions)}")
     } else {
       queryUIOpt.foreach(_.updateStatus(TransformationStatus.WAITING_DATA))
-      info(s"No new partition")
+      infoQ(s"No new partition")
     }
 
     if (toProcessPartitions.isEmpty) {
       waitingForNewData = true
       if (sfOptions.streamingLoadAvailableData) {
-        info(s"All available data was loaded. Finishing streaming.")
+        infoQ(s"All available data was loaded. Finishing streaming.")
         queryUIOpt.foreach(_.updateStatus(TransformationStatus.FINISHED))
         SfOffset.empty
       } else {
         val soqlWithMaxBound = getQueryWithMaxBound
         val printSoql = SoqlUtils.printSOQL(soqlWithMaxBound, isSelectAll)
-        info(s"Checking table '$sfTableName' for new records with query: '$printSoql'")
+        infoQ(s"Checking table '$sfTableName' for new records with query: '$printSoql'")
         val newRecords = sfSoapConnection.countTable(SoqlUtils.convertToCountQuery(soqlWithMaxBound).toSOQLText, sfOptions.isQueryAll)
         lazy val latestOffset = sfSoapConnection.getLatestOffsetFromSF(offsetColName)
         if (newRecords > 0 && latestOffset.isDefined) {
-          info(s"Salesforce table '$sfTableName' contains '$newRecords' new records with latest offset: '${latestOffset.get}' for soql: $printSoql")
+          infoQ(s"Salesforce table '$sfTableName' contains '$newRecords' new records with latest offset: '${latestOffset.get}' for soql: $printSoql")
           val partitionsNumber = if (partitionColType.operationTypeStr == classOf[String].getName) {
             1
           } else {
@@ -253,18 +252,18 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
             latestOffset,
             partitionsNumber,
             isFirstPartitionCondOperatorGreaterAndEqual = false)
-          info(s"New partitions are: \n${printPartitions(toProcessPartitions)}")
+          infoQ(s"New partitions are: \n${printPartitions(toProcessPartitions)}")
           maxOffset = latestOffset
           sfPartitionsRW.writeDriverSfPartitions(SfStreamingPartitions(toProcessPartitions, maxOffset))
           waitingForNewData = false
           endOffsetMockCounter += 1
           SfOffset(endOffsetMockCounter.toString)
         } else {
-          info(s"No new records for soql: $printSoql")
+          infoQ(s"No new records for soql: $printSoql")
           val sleep = sfOptions.streamingAdditionalWaitWhenIncrementalLoading
-          info(s"All available data was loaded. Sleeping: '${DurationPrinter.print[H, M, S, MS](sleep)}' before fetching next data.")
+          infoQ(s"All available data was loaded. Sleeping: '${DurationPrinter.print[H, M, S, MS](sleep)}' before fetching next data.")
           Thread.sleep(sleep)
-          info(s"Continue loading after sleeping: '${DurationPrinter.print[H, M, S, MS](sleep)}'")
+          infoQ(s"Continue loading after sleeping: '${DurationPrinter.print[H, M, S, MS](sleep)}'")
           SfOffset.empty
         }
       }
@@ -279,8 +278,7 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
     * Just a mock.
     */
   override def deserializeOffset(json: String) = {
-    debug("\n\n\n\n\n\n")
-    debug(s"DeserializeOffset: $json")
+    debugQ(s"DeserializeOffset: $json")
     SfOffset(json)
   }
 
@@ -291,7 +289,7 @@ class SoapDataSourceStreamingReaderV2(sfOptions: SfOptions,
   override def commit(`end`: Offset): Unit = {}
 
   override def stop(): Unit = {
-    debug("Stopping streaming")
+    debugQ("Stopping streaming")
   }
 
   private def getQueryWithMaxBound: String = {

@@ -3,7 +3,7 @@ package com.keks.spark.sf
 import com.keks.spark.sf.SfOptions._
 import com.keks.spark.sf.exceptions.SoqlIsNotDefinedException
 import com.keks.spark.sf.soap.DEFAULT_SOAP_QUERY_EXECUTOR_CLASS
-import com.keks.spark.sf.util.SoqlUtils
+import com.keks.spark.sf.util.{SoqlUtils, UniqueQueryId}
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.util.CaseInsensitiveMap
 import org.apache.spark.sql.sources.v2.DataSourceOptions
@@ -23,6 +23,8 @@ import scala.util.Try
   */
 class SfOptions(@transient private val parameters: CaseInsensitiveMap[String],
                 sparkConf: SparkConf) extends LogSupport with Serializable {
+
+  implicit val uniqueQueryId: UniqueQueryId = UniqueQueryId.getUniqueQueryId
 
   private val existsInOptionsOrSparkConf: String => Unit =
     (optionName: String) =>
@@ -110,7 +112,7 @@ class SfOptions(@transient private val parameters: CaseInsensitiveMap[String],
   val queryExecutorClassName = getFromOptionsOrSparkConfOpt(SOAP_QUERY_EXECUTOR_CLASS_NAME).getOrElse(DEFAULT_SOAP_QUERY_EXECUTOR_CLASS)
 
   val offsetColumn: String = getFromOptionsOrSparkConfOpt(SF_OFFSET_COL).getOrElse {
-    info(s"For option: '$SF_OFFSET_COL' default offset column 'SystemModstamp' is used.")
+    infoQ(s"For option: '$SF_OFFSET_COL' default offset column 'SystemModstamp' is used.")
     "SystemModstamp"
   }
 

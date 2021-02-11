@@ -3,7 +3,7 @@ package com.keks.spark.sf.soap
 import com.keks.spark.sf.enums.SoapDelivery.AT_LEAST_ONCE
 import com.keks.spark.sf.implicits.RichTry
 import com.keks.spark.sf.util.LetterTimeUnit.{H, M, S}
-import com.keks.spark.sf.util.{DurationPrinter, SoqlUtils, Utils}
+import com.keks.spark.sf.util.{DurationPrinter, SoqlUtils, UniqueQueryId, Utils}
 import com.keks.spark.sf.{LogSupport, SfOptions}
 import com.sforce.soap.partner.fault.InvalidQueryLocatorFault
 import com.sforce.soap.partner.{PartnerConnection, QueryResult}
@@ -43,7 +43,7 @@ class TrySoapQueryExecutor(override val sfOptions: SfOptions,
   def tryToQuery(soql: String,
                  batchCounter: Int,
                  queryLocatorOpt: Option[String],
-                 lastOffsetOpt: Option[Any]): QueryResult = {
+                 lastOffsetOpt: Option[Any])(implicit uniqueQueryId: UniqueQueryId): QueryResult = {
     Try {
       queryLocatorOpt
         .map { queryLocator => soapConnection.queryMore(queryLocator) }
@@ -51,23 +51,23 @@ class TrySoapQueryExecutor(override val sfOptions: SfOptions,
     }.onFailure { exception =>
       val printSoql = SoqlUtils.printSOQL(SOQLParserHelper.createSOQLData(soql), sfOptions.isSelectAll)
       val sleep = Utils.getRandomDelay(sfOptions.checkConnectionRetrySleepMin, sfOptions.checkConnectionRetrySleepMax)
-      warn(s"'$executorName'. Batch '$batchCounter' will be loaded again. Sleeping: ${DurationPrinter.print[H, M, S](sleep)} SOQL: '$printSoql'")
+      warnQ(s"'$executorName'. Batch '$batchCounter' will be loaded again. Sleeping: ${DurationPrinter.print[H, M, S](sleep)} SOQL: '$printSoql'")
       Thread.sleep(sleep)
       (exception, queryLocatorOpt, lastOffsetOpt) match {
         case (_: ConnectionException, Some(_), _) if Option(exception.getMessage).exists(_.contains("Failed to send request")) =>
-          warn(s"'$executorName'. Retrying Batch '$batchCounter'. Exception was: $exception")
+          warnQ(s"'$executorName'. Retrying Batch '$batchCounter'. Exception was: $exception")
           SoapUtils.checkConnection(soapConnection, sfOptions.checkConnectionRetries, sfOptions.checkConnectionRetrySleepMin, "PartitionId: '$partitionId'. Retrying Batch '$batchCounter'.")
           tryToQuery(soql, batchCounter, queryLocatorOpt, lastOffsetOpt)
 
         case (exception: InvalidQueryLocatorFault, _, Some(lastOffset)) =>
-          warn(s"'$executorName'. Invalid Query Locator. Retrying to load data since lats offset: '$lastOffset'.  Soql: '$printSoql'")
+          warnQ(s"'$executorName'. Invalid Query Locator. Retrying to load data since lats offset: '$lastOffset'.  Soql: '$printSoql'")
           // TODO remove true
           val newSoql = SoqlUtils.replaceLowerOffsetBoundOrAddBound(soql, lastOffset.toString, AT_LEAST_ONCE).toSOQLText
-          warn(s"'$executorName'. New Soql is: '$newSoql'")
+          warnQ(s"'$executorName'. New Soql is: '$newSoql'")
           tryToQuery(newSoql, batchCounter, None, lastOffsetOpt)
 
         case (exception: InvalidQueryLocatorFault, None, None) =>
-          warn(s"'$executorName'. First query failed with Invalid query locator. Retrying  Soql: '$printSoql'")
+          warnQ(s"'$executorName'. First query failed with Invalid query locator. Retrying  Soql: '$printSoql'")
           tryToQuery(soql, batchCounter, None, lastOffsetOpt)
 
         case _ =>
@@ -104,6 +104,7 @@ abstract class SoapQueryExecutor(val sfOptions: SfOptions,
   def tryToQuery(soql: String,
                  batchCounter: Int,
                  queryLocatorOpt: Option[String],
-                 lastOffsetOpt: Option[Any]): QueryResult
+                 lastOffsetOpt: Option[Any])
+                (implicit uniqueQueryId: UniqueQueryId): QueryResult
 
 }

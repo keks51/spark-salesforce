@@ -1,7 +1,7 @@
 package com.keks.spark.sf.soap.v2
 
-import com.keks.spark.sf.util._
 import com.keks.spark.sf._
+import com.keks.spark.sf.util._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.sources.v2.reader.{DataSourceReader, SupportsPushDownFilters, SupportsPushDownRequiredColumns}
 import org.apache.spark.sql.sources.{Filter, IsNotNull, IsNull}

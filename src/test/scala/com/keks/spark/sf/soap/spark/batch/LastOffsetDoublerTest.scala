@@ -6,8 +6,8 @@ import com.keks.spark.sf.SfOptions._
 import com.keks.spark.sf.soap.DEFAULT_SOAP_QUERY_EXECUTOR_CLASS
 import com.keks.spark.sf.{SALESFORCE_SOAP_V1, SALESFORCE_SOAP_V2}
 import utils.SalesforceColumns._
+import utils.xml._
 import utils.{DataFrameEquality, MockedServer, TestBase}
-import xml._
 
 
 class LastOffsetDoublerTest extends TestBase with MockedServer with DataFrameEquality {

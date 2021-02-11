@@ -1,11 +1,12 @@
 package utils
 
+import com.keks.spark.sf.util.UniqueQueryId
 import org.apache.spark.sql.SparkSession
 import org.mule.tools.soql.SOQLParserHelper
 import org.scalatest.GivenWhenThen
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import xml.SfRecord
+import utils.xml.SfRecord
 
 import java.sql.Timestamp
 import scala.util.{Failure, Success, Try}
@@ -14,6 +15,7 @@ import scala.util.{Failure, Success, Try}
 
 class TestBase extends AnyFlatSpec with GivenWhenThen with Matchers {
 
+  implicit val uniqueQueryId: UniqueQueryId = UniqueQueryId(0)
   val CHECKPOINT_DIR = "checkpoint"
   val emptyRecordsList = Seq.empty[Seq[SfRecord]]
   val wireMockServerPort = 18635

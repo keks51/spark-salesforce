@@ -64,7 +64,7 @@ class BatchSoapResultSet(sfOptions: SfOptions,
         partitionProcessingTime = getCurrentTime - partitionProcessingStartTime,
         recordsInSfBatch = recordsInBatch)
 
-      info(s"PartitionId: '$partitionId'. Query '$prettySoql' finished. Loaded: $processedRecordCount in '$batchCounter' batches")
+      infoQ(s"PartitionId: '$partitionId'. Query '$prettySoql' finished. \n   Loaded: '$processedRecordCount' records in '$batchCounter' batches")
     }
     next
   }
@@ -90,7 +90,7 @@ class BatchSoapResultSet(sfOptions: SfOptions,
 
       batchCursor = -1
       sfTaskMetrics.foreach(updateMetrics(_, recordsInBatch, batchCounter))
-      info(s"PartitionId: '$partitionId'. Loaded batch: '$batchCounter' of '$maxBatchNumber'. Sum of records: '$processedRecordCount'")
+      infoQ(s"PartitionId: '$partitionId'. Loaded batch: '$batchCounter' of '$maxBatchNumber'. Sum of records: '$processedRecordCount'")
       sparkBatchProcessingStartTime = System.currentTimeMillis()
     }
 

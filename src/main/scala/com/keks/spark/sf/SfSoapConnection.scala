@@ -45,17 +45,17 @@ case class SfSoapConnection(soapConnection: PartnerConnection,
     */
   def getLatestOffsetFromSF(offsetColName: String): Option[String] = {
     val soql = s"SELECT $offsetColName FROM $tableName ORDER BY $offsetColName DESC LIMIT 1"
-    info(s"ID: $queryId. Finding the last value in table: '$tableName' for column: '$offsetColName'")
+    infoQ(s"Finding the last value in table: '$tableName' for column: '$offsetColName'")
     val value = getFirstRecordFirstColValue(soql)
-    info(s"ID: $queryId. Last value in table: '$tableName' for column: '$offsetColName' is: '$value'")
+    infoQ(s"Last value in table: '$tableName' for column: '$offsetColName' is: '$value'")
     value
   }
 
   def getFirstOffsetFromSF(offsetColName: String): Option[String] = {
     val soql = s"SELECT $offsetColName FROM $tableName ORDER BY $offsetColName LIMIT 1"
-    info(s"ID: $queryId. Finding the first value in table: '$tableName' for column: '$offsetColName'")
+    infoQ(s"Finding the first value in table: '$tableName' for column: '$offsetColName'")
     val value = getFirstRecordFirstColValue(soql)
-    info(s"ID: $queryId. First value in table: '$tableName' for column: '$offsetColName' is: '$value'")
+    infoQ(s"First value in table: '$tableName' for column: '$offsetColName' is: '$value'")
     value
   }
 
@@ -84,7 +84,7 @@ object SfSoapConnection extends LogSupport {
   def apply(sfOptions: SfOptions,
             sfTableName: String,
             connectionNameId: String)(implicit queryId: UniqueQueryId): SfSoapConnection = {
-    debug(s"Id: $queryId. Connecting to Salesforce for connection name: '$connectionNameId'")
+    debugQ(s"Connecting to Salesforce for connection name: '$connectionNameId'")
     val sfConnectionConfig: ConnectorConfig = SfConfigUtils.createSfConnectorConfig(sfOptions)
     val soapConnection = getSoapConnection(sfConnectionConfig, sfOptions.checkConnectionRetries, sfOptions.checkConnectionRetrySleepMin, connectionNameId)
     val queryExecutor =  SoapQueryExecutorClassLoader.loadClass(
@@ -98,15 +98,15 @@ object SfSoapConnection extends LogSupport {
   private def getSoapConnection(conf: ConnectorConfig,
                                 retries: Int,
                                 sleepMillis: Long,
-                                requesterSide: String): PartnerConnection = {
+                                requesterSide: String)(implicit queryId: UniqueQueryId): PartnerConnection = {
     val leftTries = retries - 1
     if (leftTries == 0) {
-      error(s"Requester: '$requesterSide'. Connection failed. Out of retires. Aborting")
+      errorQ(s"Connection failed. Out of retires. Aborting")
       throw new SalesforceConnectionException(conf)
     } else {
-      debug(s"Requester: '$requesterSide'. Connecting to Salesforce")
+      debugQ(s"Requester: '$requesterSide'. Connecting to Salesforce")
       Try(new PartnerConnection(conf)).onFailure { exp =>
-        warn(s"Requester: '$requesterSide'. Cannot connect to Salesforce. Retrying: '$leftTries'.\n$exp")
+        warnQ(s"Requester: '$requesterSide'. Cannot connect to Salesforce. Retrying: '$leftTries'.\n$exp")
         Thread.sleep(sleepMillis)
         getSoapConnection(conf, leftTries, sleepMillis, requesterSide)
       }

@@ -1,4 +1,4 @@
-package xml
+package utils.xml
 
 
 /**
@@ -9,7 +9,7 @@ package xml
 case class SfDescribeXmlResponse(fields: Seq[SfField]) {
 
   override def toString = {
-    s"""<?xml version="1.0" encoding="UTF-8"?>
+    s"""<?utils.xml version="1.0" encoding="UTF-8"?>
        |<soapenv:Envelope
        |    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
        |    xmlns="urn:partner.soap.sforce.com"

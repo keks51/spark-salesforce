@@ -34,7 +34,6 @@ class SoapSourceV2
   // getting spark session
   require(SparkSession.getActiveSession.isDefined)
   implicit val spark: SparkSession = SparkSession.getActiveSession.get
-  implicit val uniqueQueryId: UniqueQueryId = UniqueQueryId.getUniqueQueryId
   private var batchReaderOpt: Option[SoapDataSourceBatchReaderV2] = None
   private var streamingReaderOpt: Option[SoapDataSourceStreamingReaderV2] = None
 
@@ -43,13 +42,14 @@ class SoapSourceV2
   }
   override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = {
     batchReaderOpt.map { e =>
-      info("Starting batching...")
+      debug("Starting batching...")
       e
     }.getOrElse {
       val sparkConf: SparkConf = spark.sparkContext.getConf
       val sfOptions = SfOptions(options.asMap().asScala.toMap, sparkConf)
       val soqlStr = sfOptions.soql
       val sfTableName = SoqlUtils.getTableNameFromNotParsedSoql(soqlStr)
+      implicit val uniqueQueryId: UniqueQueryId = sfOptions.uniqueQueryId
       implicit val sfSoapConnection: SfSoapConnection = SfSoapConnection(sfOptions = sfOptions, sfTableName, "Driver")
       implicit val parsedSoqlData: ParsedSoqlData = ParsedSoqlData(soqlStr, sfSoapConnection.sfTableDataTypeMap, sfOptions.offsetColumn)
       val reader = new SoapDataSourceBatchReaderV2(sfOptions, Option(schema))
@@ -63,13 +63,14 @@ class SoapSourceV2
     val opt = options
     streamingReaderOpt.map { e =>
       e.checkpointLocation = new Path(checkpointLocation).getParent.getParent.toUri.toString
-      info("Starting streaming...")
+      debug("Starting streaming...")
       e
     }.getOrElse {
       val sparkConf: SparkConf = spark.sparkContext.getConf
       val sfOptions = SfOptions(options.asMap().asScala.toMap, sparkConf)
       val soqlStr = sfOptions.soql
       val sfTableName = SoqlUtils.getTableNameFromNotParsedSoql(soqlStr)
+      implicit val uniqueQueryId: UniqueQueryId = sfOptions.uniqueQueryId
       implicit val sfSoapConnection: SfSoapConnection = SfSoapConnection(sfOptions = sfOptions, sfTableName, "Driver")
       implicit val parsedSoqlData: ParsedSoqlData = ParsedSoqlData(soqlStr, sfSoapConnection.sfTableDataTypeMap, sfOptions.offsetColumn)
       val reader = new SoapDataSourceStreamingReaderV2(sfOptions, if (schema.isPresent) Some(schema.get()) else None, checkpointLocation)

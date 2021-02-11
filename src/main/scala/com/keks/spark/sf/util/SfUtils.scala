@@ -54,7 +54,6 @@ object SfUtils extends LogSupport with Serializable {
   /* Adding spark filters to soql query */
   def addFilters(soql: SOQLQuery, filters: Array[Filter]): SOQLQuery = {
     filters.flatMap(parseFilter).foldLeft(soql) { case (soql, filterStr) =>
-      println(filterStr)
       SoqlUtils.addWhereClause(soql, s"($filterStr)")
     }
   }
@@ -94,7 +93,7 @@ object SfUtils extends LogSupport with Serializable {
           null
         }
       case _ =>
-        println(s"Warn. Filter clause '$filter' is not supported")
+        warn(s"Warn. Filter clause '$filter' is not supported")
         null
     }
     Option(res)
@@ -130,17 +129,20 @@ object SfUtils extends LogSupport with Serializable {
                             endOffset: Option[String],
                             numPartitions: Int,
                             isFirstPartitionCondOperatorGreaterAndEqual: Boolean)
-                           (implicit enc: PartitionTypeOperations[T]): Array[SfSparkPartition] = {
+                           (implicit enc: PartitionTypeOperations[T],
+                            uniqueQueryId: UniqueQueryId): Array[SfSparkPartition] = {
     (lastProcessedOffset, endOffset) match {
       case (Some(lowerBound), Some(upperBound)) =>
-        if (enc.operationTypeStr == classOf[String].getName) {
+        val parts = if (enc.operationTypeStr == classOf[String].getName) {
           PartitionSplitter.generateSfSparkPartitions(Array((s"$lowerBound", s"$upperBound")), offsetColName, isFirstPartitionCondOperatorGreaterAndEqual)
         } else {
           val bounds = PartitionSplitter.createBounds(lowerBound, upperBound, numPartitions)
           PartitionSplitter.generateSfSparkPartitions(bounds, offsetColName, isFirstPartitionCondOperatorGreaterAndEqual)
         }
+        infoQ(s"Partitions are: \n   ${parts.map(_.getWhereClause).zipWithIndex.map(e => s"${e._2}) ${e._1}").mkString("   \n")}")
+        parts
       case (None, None) =>
-        info(s"Salesforce table: '$sfTableName' is empty")
+        infoQ(s"Salesforce table: '$sfTableName' is empty")
         Array.empty
     }
   }

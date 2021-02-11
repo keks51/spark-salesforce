@@ -3,7 +3,7 @@ package com.keks.spark.sf
 import com.keks.spark.sf.enums.PartitionColType.{DOUBLE, INTEGER, ISO_DATE_TIME, STRING}
 import com.keks.spark.sf.implicits.RichTry
 import com.keks.spark.sf.soap.{ExecutorMetrics, SfSparkPartition}
-import com.keks.spark.sf.util.DateTimeUtils
+import com.keks.spark.sf.util.{DateTimeUtils, UniqueQueryId}
 import org.apache.spark.sql.types._
 import org.joda.time.DateTime
 
@@ -175,21 +175,22 @@ object PartitionSplitter extends LogSupport {
   def recreateSfSparkPartitions[T](partitions: Array[SfSparkPartition],
                                    numPartitions: Int,
                                    offsetColName: String)
-                                  (implicit enc: PartitionTypeOperations[T]): Array[SfSparkPartition] = {
+                                  (implicit enc: PartitionTypeOperations[T],
+                                   uniqueQueryId: UniqueQueryId): Array[SfSparkPartition] = {
     val notFinishedPartitions = partitions
       .filterNot(_.executorMetrics.isDone)
       .map { partition =>
         val lastOffsetFromExecutor = enc.parseToSfValue(partition.executorMetrics.offset)
         partition.copy(lowerBound = lastOffsetFromExecutor)
       }
-    info(s"Driver. Finished '${numPartitions - notFinishedPartitions.length}' of $numPartitions")
+    infoQ(s"Driver. Finished '${numPartitions - notFinishedPartitions.length}' of $numPartitions")
     if (notFinishedPartitions.length >= numPartitions) {
-      info(s"Recreated partitions without shuffling bounds")
+      infoQ(s"Recreated partitions without shuffling bounds")
       notFinishedPartitions
     } else if (notFinishedPartitions.length == 0) {
       Array.empty
     } else {
-      info(s"Recreating partitions with shuffling bounds")
+      infoQ(s"Recreating partitions with shuffling bounds")
       val bounds = notFinishedPartitions.map(e => (e.lowerBound, e.upperBound))
       val newBounds = PartitionSplitter.rebuildBounds(bounds, numPartitions)
       generateSfSparkPartitions(newBounds, offsetColName, isFirstPartitionCondOperatorGreaterAndEqual = true)

@@ -68,7 +68,7 @@ object SoqlUtils extends LogSupport {
     */
   def validateAndParseQuery(soqlStr: String): SOQLQuery = {
     val soql: SOQLQuery = Try(SOQLParserHelper.createSOQLData(soqlStr))
-      .onFailure { e => println(s"Cannot parse query: '$soqlStr'"); throw e }
+      .onFailure { e => error(s"Cannot parse query: '$soqlStr'"); throw e }
     val message: String => String = (option: String) => s"Spark-Salesforce library doesn't support '$option' in soql query"
     require(Option(soql.getGroupByClause).isEmpty, message("group by clause"))
     require(Option(soql.getHavingClause).isEmpty, message("having clause"))
@@ -131,7 +131,7 @@ object SoqlUtils extends LogSupport {
                      setInParenthesis: Boolean = false): SOQLQuery = {
     val anotherCondition: Condition =
       Try(SOQLParserHelper.createSOQLData(s"SELECT id FROM user WHERE $stringWhereClause").getWhereClause.getCondition)
-        .onFailure { e => println(s"Cannot parse where clause: $stringWhereClause"); throw e }
+        .onFailure { e => error(s"Cannot parse where clause: $stringWhereClause"); throw e }
     Option(soql.getWhereClause)
       .map { clause =>
         val previousCond = if (setInParenthesis) new Parenthesis(clause.getCondition) else clause.getCondition
@@ -173,7 +173,7 @@ object SoqlUtils extends LogSupport {
       case andOperator: AndOperator => andOperator.getRightCondition
       case _ =>
         val text = errorText(s"WHERE clause doesn't contain AND OPERATOR.")
-        println(text)
+        error(text)
         throw new IllegalArgumentException(text)
     }
 
@@ -181,7 +181,7 @@ object SoqlUtils extends LogSupport {
       case parenthesis: Parenthesis => parenthesis.getCondition
       case _ =>
         val text = errorText(s"Partition clause is not in Parenthesis")
-        println(text)
+        error(text)
         throw new IllegalArgumentException(text)
     }
 
@@ -221,7 +221,7 @@ object SoqlUtils extends LogSupport {
     Option(soql.getOrderByClause)
       .map(_.getOrderBySpecs.asScala.map { orderBySpec =>
         Try(orderBySpec.getOrderByField.asInstanceOf[Field].getFieldName)
-          .onFailure { e => println("Only Fields are supported in ORDER BY statement"); throw e }
+          .onFailure { e => error("Only Fields are supported in ORDER BY statement"); throw e }
       }.toArray)
   }
 

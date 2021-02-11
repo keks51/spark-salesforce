@@ -1,7 +1,7 @@
 package com.keks.spark.sf.soap.resultset
 
 import com.keks.spark.sf.soap.SfSparkPartition
-import com.keks.spark.sf.util.SoqlUtils
+import com.keks.spark.sf.util.{SoqlUtils, UniqueQueryId}
 import com.keks.spark.sf.{SfOptions, SfResultSet}
 import com.sforce.soap.partner.QueryResult
 import com.sforce.soap.partner.sobject.SObject
@@ -23,13 +23,14 @@ import scala.util.Try
 abstract class SfSoapResultSet(sfOptions: SfOptions,
                                firstQueryResult: QueryResult,
                                soql: String,
-                               sfPartition: SfSparkPartition) extends SfResultSet {
+                               sfPartition: SfSparkPartition)
+                              (implicit queryId: UniqueQueryId) extends SfResultSet {
   protected val partitionId: Int = sfPartition.id
   protected val prettySoql: String = SoqlUtils.printSOQL(SOQLParserHelper.createSOQLData(soql), sfOptions.isSelectAll)
 
   /* From firstQueryResult we can get the number of records that will be returned for this soql */
   protected val globalNumberOfRecords: Int = firstQueryResult.getSize
-  info(s"PartitionId: '$partitionId'. For query '$prettySoql' \n   result size is '$globalNumberOfRecords' records.")
+  infoQ(s"PartitionId: '$partitionId'. For query '$prettySoql' \n   estimated result size is '$globalNumberOfRecords' records.")
 
   /* number of processed records by spark  */
   protected var processedRecordCount = 0
@@ -40,7 +41,7 @@ abstract class SfSoapResultSet(sfOptions: SfOptions,
   protected var recordsInBatch: Int = firstQueryResult.getRecords.length
   /* Approximate number of coming batches */
   val maxBatchNumber: Int = Try(Math.ceil(globalNumberOfRecords.asInstanceOf[Double] / recordsInBatch).toInt).toOption.getOrElse(0)
-  info(s"PartitionId: '$partitionId'. Estimated batches number is '$maxBatchNumber'")
+  infoQ(s"PartitionId: '$partitionId'. Estimated batches number is '$maxBatchNumber'")
   /* keep position of processed records */
   protected var batchCursor: Int = -1
   protected var batchCounter = 1

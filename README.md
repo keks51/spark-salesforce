@@ -6,7 +6,7 @@ This library requires Spark 2.x.
 ## Linking
 You can link against this library in your program at the following coordinates:
 **Using Maven:**
-```xml
+```utils.xml
 <dependency>
     <groupId>io.github.keks51</groupId>
     <artifactId>spark-salesforce</artifactId>

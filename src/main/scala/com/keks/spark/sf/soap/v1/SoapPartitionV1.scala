@@ -47,9 +47,9 @@ class SoapPartitionV1(soqlFromDriver: String,
     val partitionedSoql: SOQLQuery = SoqlUtils.addWhereClause(soql, sfSparkPartition.getWhereClause, setInParenthesis = true)
 
     context.addTaskCompletionListener { _ =>
-      info(s"Task Metrics records read: ${context.taskMetrics().inputMetrics.recordsRead}")
-      info(s"Task Metrics bytes read: ${context.taskMetrics().inputMetrics.bytesRead}")
-      info(s"Partition: $partitionId finished")
+      infoQ(s"Task Metrics records read: ${context.taskMetrics().inputMetrics.recordsRead}")
+      infoQ(s"Task Metrics bytes read: ${context.taskMetrics().inputMetrics.bytesRead}")
+      infoQ(s"Partition: $partitionId finished")
     }
     val inputMetrics: SfTaskMetrics = SfTaskMetrics(context.taskMetrics().inputMetrics)
     inputMetrics.commitTime()
@@ -57,7 +57,7 @@ class SoapPartitionV1(soqlFromDriver: String,
     val sfSoapConnection = SfSoapConnection(sfOptions, SoqlUtils.getSoqlTableName(soql), s"PartitionId: $partitionId")
     val soqlStr = partitionedSoql.toSOQLText
 
-    info(s"Querying Sf with: $soqlStr")
+    infoQ(s"PartitionId: $partitionId. Soql: $soqlStr")
     val soapResultSet = BatchSoapResultSet(
       sfOptions = sfOptions,
       soql = soqlStr,

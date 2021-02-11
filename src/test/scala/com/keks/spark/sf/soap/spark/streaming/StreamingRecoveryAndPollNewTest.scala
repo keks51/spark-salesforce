@@ -10,8 +10,8 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.{StringType, StructField, StructType, TimestampType}
 import utils.SalesforceColumns.{ID, NAME, SYSTEMMODSTAMP, TIME_FIELD}
+import utils.xml._
 import utils.{DataFrameEquality, MockedServer, TestBase, TmpDirectory}
-import xml._
 
 import scala.util.{Failure, Try}
 

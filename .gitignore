@@ -3,7 +3,7 @@
 *.iml
 /*/target/
 *.class
-dice-spark/dependency-reduced-pom.xml
+dice-spark/dependency-reduced-pom.utils.xml
 integration-tests/ingestion-tests/test-output/
 .DS_Store
 *.retry

@@ -6,8 +6,8 @@ import com.keks.spark.sf.SALESFORCE_SOAP_V2
 import com.keks.spark.sf.SfOptions._
 import org.apache.spark.sql.streaming.OutputMode
 import utils.SalesforceColumns.{ID, NAME, SYSTEMMODSTAMP, TIME_FIELD}
+import utils.xml._
 import utils.{DataFrameEquality, MockedServer, TestBase, TmpDirectory}
-import xml._
 
 
 class StreamingBy3PartitionsTest extends TestBase with MockedServer with DataFrameEquality with TmpDirectory {
