@@ -58,10 +58,9 @@ class SoapSourceV2
     }
   }
 
-  // TODO throw an exception if checkpointLocation is not defined and is null
   override def createMicroBatchReader(schema: Optional[StructType], checkpointLocation: String, options: DataSourceOptions): MicroBatchReader = {
-    val opt = options
     streamingReaderOpt.map { e =>
+      if (Option(checkpointLocation).isEmpty) throw new IllegalArgumentException("CheckpointLocation cannot be empty")
       e.checkpointLocation = new Path(checkpointLocation).getParent.getParent.toUri.toString
       debug("Starting streaming...")
       e

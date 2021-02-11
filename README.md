@@ -22,8 +22,6 @@ $ bin/spark-shell --packages io.github.keks51:spark-salesforce:version
 
 Unlike using `--jars`, using `--packages` ensures that this library and its dependencies will be added to the classpath. The `--packages` argument can also be used with `bin/spark-submit`.
 
-## Using with Spark shell
-
 ## Features
 Salesforce Data Source for Spark supports reading(writing is not yet implemented) Salesforce data from Spark SQL.
 * **Automatic schema conversion** -

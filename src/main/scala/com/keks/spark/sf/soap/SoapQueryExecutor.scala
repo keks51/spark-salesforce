@@ -61,7 +61,6 @@ class TrySoapQueryExecutor(override val sfOptions: SfOptions,
 
         case (exception: InvalidQueryLocatorFault, _, Some(lastOffset)) =>
           warnQ(s"'$executorName'. Invalid Query Locator. Retrying to load data since lats offset: '$lastOffset'.  Soql: '$printSoql'")
-          // TODO remove true
           val newSoql = SoqlUtils.replaceLowerOffsetBoundOrAddBound(soql, lastOffset.toString, AT_LEAST_ONCE).toSOQLText
           warnQ(s"'$executorName'. New Soql is: '$newSoql'")
           tryToQuery(newSoql, batchCounter, None, lastOffsetOpt)
