@@ -36,9 +36,11 @@ Salesforce Data Source for Spark supports reading(writing is not yet implemented
 * **Using predefined schema** - using spark .schema(...). Columns that doesn't exist in Salesforce will be null
 * **Elimination of unneeded columns** - selecting columns defined in spark query.
 * **Filtration using selected predicates** - push spark filters to SOQL query.
+* **Supporting asterisks(`*`)** - `SELECT * from User`
 ## Limitations
 - Aggregations in SOQL query are not supported. Use Spark aggregations.
-- Salesfor query can be like hahahahahha
+- Query should be as Select with Filters 
+
 ## Coming soon
 - Bulk api
 - PK chunking
