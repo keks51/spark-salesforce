@@ -9,7 +9,7 @@ import org.mule.tools.soql.query.SOQLQuery
 
 import java.sql.{Date, Timestamp}
 
-
+// TODO set timestamp parser. for example cast timestamp to string
 object SfUtils extends LogSupport with Serializable {
 
   /* Parsing Salesforce record field. */

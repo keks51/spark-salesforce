@@ -106,6 +106,9 @@ Salesforce Data Source for Spark supports reading(writing is not yet implemented
 * `streamingLoadAvailableData`: (Optional) loading all available data and stopping streaming or continue loading  data in incremental mode. Default (false).
 * `streamingQueryName`: (Optional) set query name to see query metrics in spark UI.
 
+Options can be set in spark submit using --conf  
+For example: `--conf "spark.sf.userName=KEKS"`
+
 ## Architecture overview
 query example: `"select id, name from account where name = 'alex'"`
 ### Spark batch
@@ -173,6 +176,15 @@ spark
   .option(SF_USER_PASSWORD, "password")
   .format(SALESFORCE_SOAP_V2)
   .load("SELECT * FROM User WHERE Name = 'keks'")
+  .select("Id", "Name") // this select is pruned and salesforce query is "SELECT Id,Name FROM User WHERE (Name = 'keks')" 
+```
+```scala
+spark
+  .read
+  .option(SF_USER_NAME, "keks")
+  .option(SF_USER_PASSWORD, "password")
+  .format(SALESFORCE_SOAP_V2)
+  .load("User")
   .select("Id", "Name") // this select is pruned and salesforce query is "SELECT Id,Name FROM User WHERE (Name = 'keks')" 
 ```
 ```scala

@@ -37,9 +37,9 @@ class SfOptions(@transient private val parameters: CaseInsensitiveMap[String],
       require(parameters.isDefinedAt(optionName), s"Option '$optionName' is required.")
 
   private val getFromOptionsOrSparkConf: String => String = (optionName: String) =>
-    parameters.get(optionName).orElse(sparkConf.getOption(optionName)).getOrElse(sparkConf.get(s"spark.$optionName"))
+    parameters.get(optionName).orElse(sparkConf.getOption(optionName)).getOrElse(sparkConf.get(s"spark.sf.$optionName"))
   private val getFromOptionsOrSparkConfOpt: String => Option[String] = (optionName: String) =>
-    parameters.get(optionName).orElse(sparkConf.getOption(optionName)).orElse(sparkConf.getOption(s"spark.$optionName"))
+    parameters.get(optionName).orElse(sparkConf.getOption(optionName)).orElse(sparkConf.getOption(s"spark.sf.$optionName"))
 
   private val getFromOptions: String => String = (optionName: String) =>
     parameters(optionName)
