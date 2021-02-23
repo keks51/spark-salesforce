@@ -165,7 +165,7 @@ spark
   .read
   .option(SF_USER_NAME, "keks")
   .option(SF_USER_PASSWORD, "password")
-  .format(SALESFORCE_SOAP_V2)
+  .format("com.keks.spark.sf.soap.v1")
   .load("SELECT * FROM User WHERE Name = 'keks'")
   .filter(col("age") === 25) // this filter is pushed down and salesforce query is "SELECT * FROM User WHERE (Name = 'keks') AND (Age = 25)" 
 ```
@@ -174,7 +174,7 @@ spark
   .read
   .option(SF_USER_NAME, "keks")
   .option(SF_USER_PASSWORD, "password")
-  .format(SALESFORCE_SOAP_V2)
+  .format("com.keks.spark.sf.soap.v1")
   .load("SELECT * FROM User WHERE Name = 'keks'")
   .select("Id", "Name") // this select is pruned and salesforce query is "SELECT Id,Name FROM User WHERE (Name = 'keks')" 
 ```
@@ -183,7 +183,7 @@ spark
   .read
   .option(SF_USER_NAME, "keks")
   .option(SF_USER_PASSWORD, "password")
-  .format(SALESFORCE_SOAP_V2)
+  .format("com.keks.spark.sf.soap.v2.SoapSourceV2")
   .load("User")
   .select("Id", "Name") // this select is pruned and salesforce query is "SELECT Id,Name FROM User WHERE (Name = 'keks')" 
 ```
@@ -197,7 +197,7 @@ spark
   .read
   .option(SF_USER_NAME, "keks")
   .option(SF_USER_PASSWORD, "password")
-  .format(SALESFORCE_SOAP_V2)
+  .format("com.keks.spark.sf.soap.v2.SoapSourceV2")
   .schema(schema)
   .load("SELECT * FROM User") // select is pruned due to .schema(...) and salesforce query is "SELECT SystemModstamp,Id,Name FROM User" 
 ```
